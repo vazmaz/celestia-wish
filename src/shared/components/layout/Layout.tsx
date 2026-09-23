@@ -6,6 +6,7 @@ import { useChatStore } from '../../../features/chat/store/chatStore'
 import { useSupportStore } from '../../../features/support/store/supportStore'
 import { SupportWidget } from '../../../features/support/components/SupportWidget'
 import { Header } from './Header'
+import { ScenicBackground } from './ScenicBackground'
 
 function useSupportSync() {
   const userId = useAuthStore((s) => s.user?.id)
@@ -43,6 +44,7 @@ export function Layout() {
   useChatSync()
   return (
     <div className="app-shell app-shell--with-chat">
+      <ScenicBackground />
       <div className="app-shell__glow" aria-hidden />
       <Header />
       <main className="app-main">

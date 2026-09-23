@@ -11,6 +11,7 @@ import { sfx } from '../../../shared/lib/sfx'
 import type { CaseItem } from '../../../shared/types'
 
 const DEFAULT_ITEM_WIDTH = 128
+const DEFAULT_ITEM_HEIGHT = 88
 const ITEM_GAP = 10
 const DEFAULT_SPIN_MS = 5200
 const STRIP_LENGTH = 48
@@ -23,10 +24,13 @@ interface Props {
   onDone: () => void
   durationMs?: number
   itemWidth?: number
+  /** Fixed item height for vertical orientation. */
+  itemHeight?: number
   compact?: boolean
   /** Play scroll ticks. Battles should enable this on one lane only. */
   audible?: boolean
   spinVariant?: 'case' | 'battle'
+  orientation?: 'horizontal' | 'vertical'
 }
 
 /** Matches `.roulette__track` transition-timing-function. */
@@ -79,14 +83,22 @@ function measureCenterOffset(
   viewport: HTMLElement,
   winIndex: number,
   fallbackStride: number,
-  itemWidth: number,
+  itemSize: number,
+  vertical: boolean,
 ): number {
   const el = track.children[winIndex] as HTMLElement | undefined
   if (el) {
+    if (vertical) {
+      const itemCenter = el.offsetTop + el.offsetHeight / 2
+      return itemCenter - viewport.clientHeight / 2
+    }
     const itemCenter = el.offsetLeft + el.offsetWidth / 2
     return itemCenter - viewport.clientWidth / 2
   }
-  return winIndex * fallbackStride + itemWidth / 2 - viewport.clientWidth / 2
+  if (vertical) {
+    return winIndex * fallbackStride + itemSize / 2 - viewport.clientHeight / 2
+  }
+  return winIndex * fallbackStride + itemSize / 2 - viewport.clientWidth / 2
 }
 
 export function Roulette({
@@ -96,10 +108,13 @@ export function Roulette({
   onDone,
   durationMs = DEFAULT_SPIN_MS,
   itemWidth = DEFAULT_ITEM_WIDTH,
+  itemHeight = DEFAULT_ITEM_HEIGHT,
   compact = false,
   audible = true,
   spinVariant = 'case',
+  orientation = 'horizontal',
 }: Props) {
+  const vertical = orientation === 'vertical'
   const rootRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -111,7 +126,8 @@ export function Roulette({
   const [active, setActive] = useState(false)
   const [strip, setStrip] = useState(() => buildStrip(pool, winner))
   const gap = ITEM_GAP
-  const stride = itemWidth + gap
+  const itemSize = vertical ? itemHeight : itemWidth
+  const stride = itemSize + gap
 
   poolRef.current = pool
   winnerRef.current = winner
@@ -124,17 +140,20 @@ export function Roulette({
   const centerOnWinner = useCallback(() => {
     const track = trackRef.current
     const viewport = viewportRef.current
-    if (!track || !viewport || viewport.clientWidth < 8) return
+    if (!track || !viewport) return
+    const span = vertical ? viewport.clientHeight : viewport.clientWidth
+    if (span < 8) return
     const centered = measureCenterOffset(
       track,
       viewport,
       WIN_INDEX,
       stride,
-      itemWidth,
+      itemSize,
+      vertical,
     )
     setActive(false)
     setOffset(centered)
-  }, [stride, itemWidth])
+  }, [stride, itemSize, vertical])
 
   // Idle / after spin: keep winner dead-center. Also re-run on resize
   // (opponent lanes often measure wrong on first paint).
@@ -179,7 +198,8 @@ export function Roulette({
           viewport,
           WIN_INDEX,
           stride,
-          itemWidth,
+          itemSize,
+          vertical,
         )
         const startOffset = Math.max(0, target - stride * 18)
         setOffset(startOffset)
@@ -232,12 +252,35 @@ export function Roulette({
       cancelAnimationFrame(tickRaf)
       window.clearTimeout(timer)
     }
-  }, [spinning, durationMs, itemWidth, stride, audible, spinVariant])
+  }, [
+    spinning,
+    durationMs,
+    itemSize,
+    stride,
+    audible,
+    spinVariant,
+    vertical,
+  ])
+
+  const itemStyle = vertical
+    ? ({
+        height: itemHeight,
+        flex: `0 0 ${itemHeight}px`,
+        width: '100%',
+        '--item-height': `${itemHeight}px`,
+      } as CSSProperties)
+    : ({
+        width: itemWidth,
+        flex: `0 0 ${itemWidth}px`,
+        '--item-width': `${itemWidth}px`,
+      } as CSSProperties)
 
   return (
     <div
       ref={rootRef}
-      className={`roulette${compact ? ' roulette--compact' : ''}`}
+      className={`roulette${compact ? ' roulette--compact' : ''}${
+        vertical ? ' roulette--vertical' : ''
+      }`}
       aria-live="polite"
     >
       {/* Marker outside masked clip so it's always visible & centered */}
@@ -248,7 +291,9 @@ export function Roulette({
             ref={trackRef}
             className={`roulette__track${active ? ' roulette__track--spin' : ''}`}
             style={{
-              transform: `translate3d(${-offset}px, 0, 0)`,
+              transform: vertical
+                ? `translate3d(0, ${-offset}px, 0)`
+                : `translate3d(${-offset}px, 0, 0)`,
               transitionDuration: active ? `${durationMs}ms` : '0ms',
               gap: `${gap}px`,
             }}
@@ -262,9 +307,7 @@ export function Roulette({
                   className={`roulette__item${isWin ? ' roulette__item--win' : ''}`}
                   style={
                     {
-                      width: itemWidth,
-                      flex: `0 0 ${itemWidth}px`,
-                      '--item-width': `${itemWidth}px`,
+                      ...itemStyle,
                       '--item-color': meta.color,
                       '--item-glow': meta.glow,
                       '--item-accent': item.accent,

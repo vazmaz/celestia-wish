@@ -103,6 +103,15 @@ export function BattleArena({ battleId }: Props) {
     return room.players.find((p) => p.userId === youId)?.teamId ?? null
   }, [room, youId])
 
+  const teamA = useMemo(
+    () => (room ? room.players.filter((p) => p.teamId === 'A') : []),
+    [room],
+  )
+  const teamB = useMemo(
+    () => (room ? room.players.filter((p) => p.teamId === 'B') : []),
+    [room],
+  )
+
   const allyPlayers = useMemo(() => {
     if (!room) return []
     if ((room.teamSize ?? 1) > 1 && yourTeam) {
@@ -136,6 +145,7 @@ export function BattleArena({ battleId }: Props) {
 
   const participating = isParticipant(room, me?.id)
   const isTeamMode = (room.teamSize ?? 1) > 1
+  const useVertical = isTeamMode || room.players.length >= 3
 
   const audiblePlayerId =
     allyPlayers.find((p) => p.userId === youId && !p.forfeited)?.id ??
@@ -154,6 +164,12 @@ export function BattleArena({ battleId }: Props) {
   const isLastReveal =
     room.phase === 'revealed' && room.currentRound + 1 >= room.totalRounds
 
+  const itemHeight = isTeamMode
+    ? room.teamSize >= 3
+      ? 64
+      : 72
+    : 80
+
   const renderLane = (
     player: (typeof room.players)[number],
     side: 'ally' | 'enemy',
@@ -164,21 +180,21 @@ export function BattleArena({ battleId }: Props) {
       isTeamMode && player.teamId
         ? leadTeam === player.teamId
         : leaderId === player.id
+    const total = liveTotals[player.id] ?? 0
     if (player.forfeited || !drop) {
       return (
         <div
           key={player.id}
           className={`arena-lane arena-lane--empty arena-lane--${side}${
             isYou ? ' arena-lane--you' : ''
-          }`}
+          }${useVertical ? ' arena-lane--v' : ''}`}
         >
           <header>
             <strong>
               {isYou ? 'Ты · ' : ''}
               {player.name}
-              {player.teamId ? ` · ${player.teamId}` : ''}
             </strong>
-            <span>{player.forfeited ? 'Forfeit' : '—'}</span>
+            <span>{player.forfeited ? 'Forfeit' : `${total} Мора`}</span>
           </header>
         </div>
       )
@@ -198,16 +214,20 @@ export function BattleArena({ battleId }: Props) {
         key={`${player.id}-${room.currentRound}`}
         className={`arena-lane arena-lane--${side}${lead ? ' arena-lane--lead' : ''}${
           isYou ? ' arena-lane--you' : ''
-        }`}
+        }${useVertical ? ' arena-lane--v' : ''}`}
       >
         <header>
           <strong>
             {isYou ? 'Ты · ' : ''}
             {player.name}
-            {player.teamId ? ` · ${player.teamId}` : ''}
           </strong>
-          <span style={{ color: meta.color }}>
-            {room.phase === 'revealed' ? `+${drop.item.value} Мора` : '…'}
+          <span>
+            {room.phase === 'revealed' ? (
+              <em style={{ color: meta.color }}>+{drop.item.value}</em>
+            ) : (
+              '…'
+            )}{' '}
+            · {total.toLocaleString('ru-RU')}
           </span>
         </header>
         <Roulette
@@ -216,10 +236,12 @@ export function BattleArena({ battleId }: Props) {
           spinning={room.phase === 'spinning'}
           onDone={noop}
           durationMs={BATTLE_SPIN_MS}
-          itemWidth={isTeamMode ? 108 : 120}
+          itemWidth={useVertical ? undefined : isTeamMode ? 108 : 120}
+          itemHeight={itemHeight}
           compact
           audible={player.id === audiblePlayerId}
           spinVariant="battle"
+          orientation={useVertical ? 'vertical' : 'horizontal'}
         />
         {room.phase === 'revealed' && (
           <p className="arena-lane__reveal" style={{ color: meta.color }}>
@@ -230,13 +252,27 @@ export function BattleArena({ battleId }: Props) {
     )
   }
 
-  const scorePlayers =
-    allyPlayers.length > 0
-      ? [...allyPlayers, ...enemyPlayers]
-      : spectatorPlayers
+  const leftTeam = yourTeam === 'B' ? teamB : teamA
+  const rightTeam = yourTeam === 'B' ? teamA : teamB
+  const leftTeamId: TeamId = leftTeam[0]?.teamId ?? (yourTeam === 'B' ? 'B' : 'A')
+  const rightTeamId: TeamId = rightTeam[0]?.teamId ?? (yourTeam === 'B' ? 'A' : 'B')
+  const leftLabel =
+    yourTeam != null
+      ? leftTeamId === yourTeam
+        ? 'Твоя команда'
+        : 'Соперники'
+      : `Команда ${leftTeamId}`
+  const rightLabel =
+    yourTeam != null
+      ? rightTeamId === yourTeam
+        ? 'Твоя команда'
+        : 'Соперники'
+      : `Команда ${rightTeamId}`
 
   return (
-    <div className="page battle-arena-page">
+    <div
+      className={`page battle-arena-page${isTeamMode ? ' battle-arena-page--team' : ''}`}
+    >
       <div className="arena-top">
         <div>
           <p className="arena-eyebrow">
@@ -251,17 +287,14 @@ export function BattleArena({ battleId }: Props) {
           <h1>
             Раунд {Math.min(room.currentRound + 1, room.totalRounds)}/
             {room.totalRounds}
+            <span className="arena-top__case"> · {caseDef.name}</span>
           </h1>
-          <p className="form-hint">
-            Кейс: <strong>{caseDef.name}</strong>
-            {room.phaseEndsInMs != null && (
-              <>
-                {' '}
-                · {room.phase === 'spinning' ? 'открытие' : 'пауза'} ~
-                {Math.ceil(room.phaseEndsInMs / 1000)}с
-              </>
-            )}
-          </p>
+          {room.phaseEndsInMs != null && (
+            <p className="form-hint">
+              {room.phase === 'spinning' ? 'открытие' : 'пауза'} ~
+              {Math.ceil(room.phaseEndsInMs / 1000)}с
+            </p>
+          )}
         </div>
         {participating && (
           <button
@@ -281,85 +314,117 @@ export function BattleArena({ battleId }: Props) {
       {teamTotals && (
         <div className="arena-team-score">
           <div
-            className={`team-score-pill${leadTeam === 'A' ? ' team-score-pill--lead' : ''}`}
+            className={`team-score-pill${
+              leadTeam === leftTeamId ? ' team-score-pill--lead' : ''
+            }`}
           >
-            <span>Команда A</span>
-            <strong>{teamTotals.A.toLocaleString('ru-RU')} Мора</strong>
+            <span>{leftLabel}</span>
+            <strong>
+              {teamTotals[leftTeamId].toLocaleString('ru-RU')} Мора
+            </strong>
           </div>
           <span className="team-score-vs">vs</span>
           <div
-            className={`team-score-pill${leadTeam === 'B' ? ' team-score-pill--lead' : ''}`}
+            className={`team-score-pill${
+              leadTeam === rightTeamId ? ' team-score-pill--lead' : ''
+            }`}
           >
-            <span>Команда B</span>
-            <strong>{teamTotals.B.toLocaleString('ru-RU')} Мора</strong>
+            <span>{rightLabel}</span>
+            <strong>
+              {teamTotals[rightTeamId].toLocaleString('ru-RU')} Мора
+            </strong>
           </div>
         </div>
       )}
 
-      <div className="arena-scoreboard">
-        {scorePlayers.map((p) => (
-          <div
-            key={p.id}
-            className={`score-pill${
-              isTeamMode
-                ? p.teamId === leadTeam
-                  ? ' score-pill--lead'
-                  : ''
-                : leaderId === p.id
-                  ? ' score-pill--lead'
-                  : ''
-            }${p.forfeited ? ' score-pill--out' : ''}${
-              p.userId === youId ? ' score-pill--you' : ''
-            }`}
-          >
-            <span>
-              {p.userId === youId ? 'Ты' : p.name}
-              {p.teamId ? ` · ${p.teamId}` : ''}
-            </span>
-            <strong>{(liveTotals[p.id] ?? 0).toLocaleString('ru-RU')} Мора</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="arena-stack">
-        {allyPlayers.length > 0 && (
-          <section className="arena-stack__you">
-            {isTeamMode && (
-              <p className="arena-stack__label">
-                Твоя команда {yourTeam ? `(${yourTeam})` : ''}
-              </p>
-            )}
+      {!isTeamMode && (
+        <div className="arena-scoreboard">
+          {(allyPlayers.length > 0
+            ? [...allyPlayers, ...enemyPlayers]
+            : spectatorPlayers
+          ).map((p) => (
             <div
-              className={`arena-lanes arena-lanes--${Math.min(allyPlayers.length, 3)}`}
+              key={p.id}
+              className={`score-pill${
+                leaderId === p.id ? ' score-pill--lead' : ''
+              }${p.forfeited ? ' score-pill--out' : ''}${
+                p.userId === youId ? ' score-pill--you' : ''
+              }`}
             >
-              {allyPlayers.map((player) => renderLane(player, 'ally'))}
+              <span>{p.userId === youId ? 'Ты' : p.name}</span>
+              <strong>
+                {(liveTotals[p.id] ?? 0).toLocaleString('ru-RU')} Мора
+              </strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isTeamMode ? (
+        <div className="arena-vs">
+          <section className="arena-vs__col arena-vs__col--left">
+            <p className="arena-stack__label">{leftLabel}</p>
+            <div className="arena-vs__lanes">
+              {leftTeam.map((player) =>
+                renderLane(
+                  player,
+                  player.teamId === yourTeam ? 'ally' : 'enemy',
+                ),
+              )}
             </div>
           </section>
-        )}
-
-        {enemyPlayers.length > 0 && (
-          <section className="arena-stack__opponents">
-            <p className="arena-stack__label">
-              {isTeamMode ? 'Команда соперников' : 'Оппоненты'}
-            </p>
-            <div
-              className={`arena-lanes arena-lanes--${Math.min(enemyPlayers.length, 3)}`}
-            >
-              {enemyPlayers.map((player) => renderLane(player, 'enemy'))}
+          <section className="arena-vs__col arena-vs__col--right">
+            <p className="arena-stack__label">{rightLabel}</p>
+            <div className="arena-vs__lanes">
+              {rightTeam.map((player) =>
+                renderLane(
+                  player,
+                  player.teamId === yourTeam ? 'ally' : 'enemy',
+                ),
+              )}
             </div>
           </section>
-        )}
+        </div>
+      ) : (
+        <div className="arena-stack">
+          {allyPlayers.length > 0 && (
+            <section className="arena-stack__you">
+              <div
+                className={`arena-lanes arena-lanes--${Math.min(allyPlayers.length, 3)}${
+                  useVertical ? ' arena-lanes--vertical' : ''
+                }`}
+              >
+                {allyPlayers.map((player) => renderLane(player, 'ally'))}
+              </div>
+            </section>
+          )}
 
-        {spectatorPlayers.length > 0 && (
-          <div
-            className={`arena-lanes arena-lanes--${Math.min(spectatorPlayers.length, 4)}`}
-          >
-            {spectatorPlayers.map((player) =>
-              renderLane(player, player.teamId === 'A' ? 'ally' : 'enemy'),
-            )}
-          </div>
-        )}
-      </div>
+          {enemyPlayers.length > 0 && (
+            <section className="arena-stack__opponents">
+              <p className="arena-stack__label">Оппоненты</p>
+              <div
+                className={`arena-lanes arena-lanes--${Math.min(enemyPlayers.length, 3)}${
+                  useVertical ? ' arena-lanes--vertical' : ''
+                }`}
+              >
+                {enemyPlayers.map((player) => renderLane(player, 'enemy'))}
+              </div>
+            </section>
+          )}
+
+          {spectatorPlayers.length > 0 && (
+            <div
+              className={`arena-lanes arena-lanes--${Math.min(spectatorPlayers.length, 4)}${
+                useVertical ? ' arena-lanes--vertical' : ''
+              }`}
+            >
+              {spectatorPlayers.map((player) =>
+                renderLane(player, player.teamId === 'A' ? 'ally' : 'enemy'),
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {room.phase === 'revealed' && (
         <div className="arena-next">

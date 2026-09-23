@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { RARITY_ORDER } from '../data/rarities'
 import type { CaseDef } from '../../../shared/types'
 import { RarityBadge } from '../../../shared/components/item/RarityBadge'
+import { MoraAmount } from '../../../shared/components/brand/MoraAmount'
 
 interface Props {
   caseDef: CaseDef
@@ -30,7 +31,10 @@ export function CaseCard({ caseDef }: Props) {
       <div className="case-card__body">
         <div className="case-card__top">
           <h2 className="case-card__title">{caseDef.name}</h2>
-          <span className="case-card__price">{caseDef.price} Мора</span>
+          <MoraAmount
+            className="case-card__price"
+            value={caseDef.price}
+          />
         </div>
         <p className="case-card__desc">{caseDef.description}</p>
         <div className="case-card__preview">

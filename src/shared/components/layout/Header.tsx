@@ -11,6 +11,8 @@ import {
   selectOpenTicketCount,
   useSupportStore,
 } from '../../../features/support/store/supportStore'
+import { CelestiaMascot } from '../brand/CelestiaMascot'
+import { MoraCoin } from '../brand/MoraCoin'
 
 const NAV = [
   { to: '/', label: 'Баннеры', end: true },
@@ -47,8 +49,11 @@ export function Header() {
   return (
     <header className="site-header">
       <NavLink to="/" end className="brand">
-        <span className="brand__mark">Celestia</span>
-        <span className="brand__sub">Wish</span>
+        <CelestiaMascot className="brand__mascot" />
+        <span className="brand__text">
+          <span className="brand__mark">Celestia</span>
+          <span className="brand__sub">Wish</span>
+        </span>
       </NavLink>
 
       <nav className="site-nav" aria-label="Основная навигация">
@@ -98,10 +103,11 @@ export function Header() {
           {muted ? <SpeakerOffIcon /> : <SpeakerIcon />}
         </button>
         <div className="balance-chip">
+        <MoraCoin className="balance-chip__coin" />
         <div>
-          <span className="balance-chip__label">
-            {user ? `@${user.username}` : 'Мора'}
-          </span>
+          {user && (
+            <span className="balance-chip__label">@{user.username}</span>
+          )}
           <strong>{balance.toLocaleString('ru-RU')}</strong>
         </div>
         <button

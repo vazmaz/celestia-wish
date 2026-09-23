@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { RARITY_META } from '../../../features/cases/data/rarities'
 import type { Rarity } from '../../../shared/types'
+import { MoraAmount } from '../brand/MoraAmount'
 import { RarityBadge } from './RarityBadge'
 
 interface Props {
@@ -48,7 +49,9 @@ export function ItemTile({
         <h3 className="item-tile__name">{name}</h3>
         <div className="item-tile__footer">
           {chanceLabel != null && <span>{chanceLabel}</span>}
-          {value != null && <span className="item-tile__value">{value} Мора</span>}
+          {value != null && (
+            <MoraAmount className="item-tile__value" value={value} />
+          )}
         </div>
       </div>
     </article>
