@@ -27,3 +27,5 @@
 - Локальный API на SQLite (порт 3010)
 - Для Railway: `schema.postgres.prisma` + `railway.toml`
 - Фронт готов к Vercel (`vercel.json`, `VITE_API_URL`)
+- ЮKassa: пополнение → редирект → webhook `/api/payments/webhook`
+  (нужны `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, `PUBLIC_APP_URL`)

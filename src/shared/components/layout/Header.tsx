@@ -1,5 +1,5 @@
-import { useState, useSyncExternalStore } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { NavLink, useSearchParams } from 'react-router-dom'
 import { usePlayerStore } from '../../../features/inventory/store/playerStore'
 import {
   selectSessionUser,
@@ -26,7 +26,23 @@ export function Header() {
   const logout = useAuthStore((s) => s.logout)
   const openTickets = useSupportStore(selectOpenTicketCount)
   const [topupOpen, setTopupOpen] = useState(false)
+  const [pendingTopupId, setPendingTopupId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
   const muted = useSyncExternalStore(subscribeSfx, getSfxMuted, getSfxMuted)
+
+  useEffect(() => {
+    const id = searchParams.get('topup')
+    if (!id) return
+    setPendingTopupId(id)
+    setTopupOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('topup')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const onPendingHandled = useCallback(() => {
+    setPendingTopupId(null)
+  }, [])
 
   return (
     <header className="site-header">
@@ -107,7 +123,12 @@ export function Header() {
         </div>
       </div>
 
-      <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <TopupModal
+        open={topupOpen}
+        onClose={() => setTopupOpen(false)}
+        pendingTopupId={pendingTopupId}
+        onPendingHandled={onPendingHandled}
+      />
     </header>
   )
 }

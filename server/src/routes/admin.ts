@@ -7,9 +7,102 @@ import {
   toPublicUser,
 } from '../auth.js'
 import { prisma } from '../prisma.js'
+import {
+  invalidateYooKassaCache,
+  isYooKassaConfigured,
+  maskSecret,
+} from '../yookassa.js'
 
 export const adminRouter = Router()
 adminRouter.use(authRequired, adminRequired)
+
+adminRouter.get('/payments', async (_req, res) => {
+  const row = await prisma.paymentSettings.findUnique({
+    where: { id: 'default' },
+  })
+  const envShop = Boolean(process.env.YOOKASSA_SHOP_ID?.trim())
+  const envSecret = Boolean(process.env.YOOKASSA_SECRET_KEY?.trim())
+  const configured = await isYooKassaConfigured()
+
+  res.json({
+    settings: {
+      yooShopId: row?.yooShopId ?? '',
+      yooSecretKeyMasked: maskSecret(row?.yooSecretKey),
+      hasSecretKey: Boolean(row?.yooSecretKey?.trim()),
+      publicAppUrl: row?.publicAppUrl ?? '',
+      updatedAt: row?.updatedAt?.getTime() ?? null,
+      source: {
+        db: Boolean(row?.yooShopId?.trim() && row?.yooSecretKey?.trim()),
+        env: envShop && envSecret,
+      },
+      configured,
+      demoPayments: process.env.DEMO_PAYMENTS === 'true',
+    },
+  })
+})
+
+const paymentsSchema = z.object({
+  yooShopId: z.string().trim().max(64).optional(),
+  yooSecretKey: z.string().trim().max(256).optional(),
+  publicAppUrl: z.string().trim().max(512).optional(),
+  clearSecretKey: z.boolean().optional(),
+})
+
+adminRouter.put('/payments', async (req, res) => {
+  const parsed = paymentsSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Некорректные данные' })
+    return
+  }
+
+  const existing = await prisma.paymentSettings.findUnique({
+    where: { id: 'default' },
+  })
+
+  let nextSecret = existing?.yooSecretKey ?? null
+  if (parsed.data.clearSecretKey) {
+    nextSecret = null
+  } else if (
+    parsed.data.yooSecretKey != null &&
+    parsed.data.yooSecretKey.length > 0
+  ) {
+    nextSecret = parsed.data.yooSecretKey
+  }
+
+  const row = await prisma.paymentSettings.upsert({
+    where: { id: 'default' },
+    create: {
+      id: 'default',
+      yooShopId: parsed.data.yooShopId || null,
+      yooSecretKey: nextSecret,
+      publicAppUrl: parsed.data.publicAppUrl || null,
+    },
+    update: {
+      ...(parsed.data.yooShopId !== undefined
+        ? { yooShopId: parsed.data.yooShopId || null }
+        : {}),
+      yooSecretKey: nextSecret,
+      ...(parsed.data.publicAppUrl !== undefined
+        ? { publicAppUrl: parsed.data.publicAppUrl || null }
+        : {}),
+    },
+  })
+
+  invalidateYooKassaCache()
+  const configured = await isYooKassaConfigured()
+
+  res.json({
+    settings: {
+      yooShopId: row.yooShopId ?? '',
+      yooSecretKeyMasked: maskSecret(row.yooSecretKey),
+      hasSecretKey: Boolean(row.yooSecretKey?.trim()),
+      publicAppUrl: row.publicAppUrl ?? '',
+      updatedAt: row.updatedAt.getTime(),
+      configured,
+      demoPayments: process.env.DEMO_PAYMENTS === 'true',
+    },
+  })
+})
 
 adminRouter.get('/users', async (_req, res) => {
   const users = await prisma.user.findMany({ orderBy: { createdAt: 'asc' } })

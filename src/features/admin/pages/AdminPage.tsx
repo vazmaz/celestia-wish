@@ -4,13 +4,14 @@ import { RARITY_META, RARITY_ORDER } from '../../cases/data/rarities'
 import { useAuthStore, selectSessionUser } from '../../auth/store/authStore'
 import { STARTING_BALANCE, type UserAccount } from '../../auth/types'
 import { AdminSupportPanel } from '../../support/components/AdminSupportPanel'
+import { AdminPaymentsPanel } from '../components/AdminPaymentsPanel'
 import {
   selectOpenTicketCount,
   useSupportStore,
 } from '../../support/store/supportStore'
 import type { Rarity } from '../../../shared/types'
 
-type AdminTab = 'users' | 'support'
+type AdminTab = 'users' | 'support' | 'payments'
 
 function inventoryStats(user: UserAccount) {
   const byRarity = RARITY_ORDER.reduce(
@@ -115,12 +116,12 @@ export function AdminPage() {
         <div>
           <h1>Админка</h1>
           <p>
-            Пользователи, балансы, инвентарь и поддержка. Вы вошли как{' '}
+            Пользователи, балансы, ЮKassa и поддержка. Вы вошли как{' '}
             <strong>{me?.username}</strong>.
           </p>
           <p className="form-hint admin-local-hint">
-            Аккаунты и балансы хранятся на сервере (Railway + Postgres).
-            Обращения поддержки пока в localStorage браузера.
+            Аккаунты, балансы и обращения поддержки хранятся на сервере
+            (Railway + Postgres).
           </p>
         </div>
         <Link to="/" className="btn btn--ghost">
@@ -153,9 +154,19 @@ export function AdminPage() {
             {openTickets > 0 ? openTickets : ticketTotal}
           </span>
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'payments'}
+          className={`admin-tab${tab === 'payments' ? ' is-active' : ''}`}
+          onClick={() => setTab('payments')}
+        >
+          ЮKassa
+        </button>
       </div>
 
       {tab === 'support' && <AdminSupportPanel />}
+      {tab === 'payments' && <AdminPaymentsPanel />}
 
       {tab === 'users' && (
         <>

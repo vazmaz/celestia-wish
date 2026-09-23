@@ -1,18 +1,13 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { createUid } from '../../../shared/lib/random'
-import { syncPersistAcrossTabs } from '../../../shared/lib/persistSync'
+import { ApiError, apiFetch } from '../../../shared/api/client'
+import { useAuthStore } from '../../auth/store/authStore'
 import type {
-  SupportAuthorRole,
   SupportCategory,
-  SupportMessage,
   SupportTicket,
   SupportTicketStatus,
 } from '../types'
 
 interface CreateTicketInput {
-  userId: string
-  username: string
   category: SupportCategory
   subject: string
   body: string
@@ -20,167 +15,140 @@ interface CreateTicketInput {
 
 interface ReplyInput {
   ticketId: string
-  authorId: string
-  authorName: string
-  authorRole: SupportAuthorRole
   body: string
 }
 
+type OkTicket = { ok: true; ticket: SupportTicket }
+type Fail = { ok: false; reason: string }
+
 interface SupportState {
   tickets: SupportTicket[]
-  createTicket: (
-    input: CreateTicketInput,
-  ) => { ok: true; ticketId: string } | { ok: false; reason: string }
-  reply: (
-    input: ReplyInput,
-  ) => { ok: true } | { ok: false; reason: string }
+  loadError: string | null
+  loadTickets: () => Promise<void>
+  clear: () => void
+  createTicket: (input: CreateTicketInput) => Promise<OkTicket | Fail>
+  reply: (input: ReplyInput) => Promise<OkTicket | Fail>
   setStatus: (
     ticketId: string,
     status: SupportTicketStatus,
-  ) => { ok: true } | { ok: false; reason: string }
-  seedDemoTicket: (adminUsername: string) => { ok: true; ticketId: string }
+  ) => Promise<OkTicket | Fail>
+  seedDemoTicket: () => Promise<OkTicket | Fail>
 }
 
-const WELCOME =
-  'Здравствуйте! Обращение принято. Администратор ответит здесь — обычно в течение дня. Пока можно уточнить детали в этом чате.'
-
-function trimBody(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ')
+function reasonFromError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message
+  if (err instanceof Error) return err.message
+  return fallback
 }
 
-export const useSupportStore = create<SupportState>()(
-  persist(
-    (set, get) => ({
-      tickets: [],
+function upsertTicket(
+  tickets: SupportTicket[],
+  ticket: SupportTicket,
+): SupportTicket[] {
+  return [ticket, ...tickets.filter((t) => t.id !== ticket.id)]
+}
 
-      createTicket: (input) => {
-        const subject = input.subject.trim()
-        const body = trimBody(input.body)
-        if (subject.length < 3) {
-          return { ok: false, reason: 'Тема слишком короткая (минимум 3 символа).' }
-        }
-        if (body.length < 5) {
-          return { ok: false, reason: 'Опишите проблему подробнее (минимум 5 символов).' }
-        }
+export const useSupportStore = create<SupportState>()((set, get) => ({
+  tickets: [],
+  loadError: null,
 
-        const ticketId = createUid()
-        const now = Date.now()
-        const userMsg: SupportMessage = {
-          id: createUid(),
-          ticketId,
-          authorId: input.userId,
-          authorName: input.username,
-          authorRole: 'user',
-          body,
-          createdAt: now,
-        }
-        const systemMsg: SupportMessage = {
-          id: createUid(),
-          ticketId,
-          authorId: 'system',
-          authorName: 'Celestia Support',
-          authorRole: 'system',
-          body: WELCOME,
-          createdAt: now + 1,
-        }
+  clear: () => set({ tickets: [], loadError: null }),
 
-        const ticket: SupportTicket = {
-          id: ticketId,
-          userId: input.userId,
-          username: input.username,
-          category: input.category,
-          subject,
-          status: 'open',
-          createdAt: now,
-          updatedAt: now,
-          messages: [userMsg, systemMsg],
-        }
+  loadTickets: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) {
+      set({ tickets: [], loadError: null })
+      return
+    }
+    try {
+      const data = await apiFetch<{ tickets: SupportTicket[] }>(
+        '/api/support/tickets',
+        { token },
+      )
+      set({ tickets: data.tickets, loadError: null })
+    } catch (err) {
+      set({ loadError: reasonFromError(err, 'Не удалось загрузить обращения') })
+    }
+  },
 
-        set({ tickets: [ticket, ...get().tickets] })
-        return { ok: true, ticketId }
-      },
+  createTicket: async (input) => {
+    const token = useAuthStore.getState().token
+    if (!token) return { ok: false, reason: 'Нужно войти в аккаунт.' }
+    try {
+      const data = await apiFetch<{ ticket: SupportTicket }>(
+        '/api/support/tickets',
+        {
+          method: 'POST',
+          token,
+          body: JSON.stringify(input),
+        },
+      )
+      set({ tickets: upsertTicket(get().tickets, data.ticket), loadError: null })
+      return { ok: true, ticket: data.ticket }
+    } catch (err) {
+      return { ok: false, reason: reasonFromError(err, 'Не удалось отправить') }
+    }
+  },
 
-      reply: (input) => {
-        const body = trimBody(input.body)
-        if (body.length < 1) {
-          return { ok: false, reason: 'Сообщение пустое.' }
-        }
+  reply: async (input) => {
+    const token = useAuthStore.getState().token
+    if (!token) return { ok: false, reason: 'Нужно войти в аккаунт.' }
+    try {
+      const data = await apiFetch<{ ticket: SupportTicket }>(
+        `/api/support/tickets/${input.ticketId}/messages`,
+        {
+          method: 'POST',
+          token,
+          body: JSON.stringify({ body: input.body }),
+        },
+      )
+      set({ tickets: upsertTicket(get().tickets, data.ticket), loadError: null })
+      return { ok: true, ticket: data.ticket }
+    } catch (err) {
+      return { ok: false, reason: reasonFromError(err, 'Не удалось отправить') }
+    }
+  },
 
-        const tickets = get().tickets
-        const index = tickets.findIndex((t) => t.id === input.ticketId)
-        if (index < 0) {
-          return { ok: false, reason: 'Обращение не найдено.' }
-        }
+  setStatus: async (ticketId, status) => {
+    const token = useAuthStore.getState().token
+    if (!token) return { ok: false, reason: 'Нужно войти в аккаунт.' }
+    try {
+      const data = await apiFetch<{ ticket: SupportTicket }>(
+        `/api/support/tickets/${ticketId}`,
+        {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify({ status }),
+        },
+      )
+      set({ tickets: upsertTicket(get().tickets, data.ticket), loadError: null })
+      return { ok: true, ticket: data.ticket }
+    } catch (err) {
+      return {
+        ok: false,
+        reason: reasonFromError(err, 'Не удалось сменить статус'),
+      }
+    }
+  },
 
-        const ticket = tickets[index]
-        if (ticket.status === 'closed') {
-          return { ok: false, reason: 'Обращение закрыто.' }
-        }
-
-        const now = Date.now()
-        const message: SupportMessage = {
-          id: createUid(),
-          ticketId: ticket.id,
-          authorId: input.authorId,
-          authorName: input.authorName,
-          authorRole: input.authorRole,
-          body,
-          createdAt: now,
-        }
-
-        const nextStatus: SupportTicketStatus =
-          input.authorRole === 'admin' ? 'answered' : 'open'
-
-        const updated: SupportTicket = {
-          ...ticket,
-          status: nextStatus,
-          updatedAt: now,
-          messages: [...ticket.messages, message],
-        }
-
-        const next = [...tickets]
-        next[index] = updated
-        set({ tickets: next })
-        return { ok: true }
-      },
-
-      setStatus: (ticketId, status) => {
-        const tickets = get().tickets
-        const index = tickets.findIndex((t) => t.id === ticketId)
-        if (index < 0) {
-          return { ok: false, reason: 'Обращение не найдено.' }
-        }
-        const next = [...tickets]
-        next[index] = {
-          ...tickets[index],
-          status,
-          updatedAt: Date.now(),
-        }
-        set({ tickets: next })
-        return { ok: true }
-      },
-
-      seedDemoTicket: (adminUsername) => {
-        const result = get().createTicket({
-          userId: 'demo-client',
-          username: 'demo_client',
-          category: 'balance',
-          subject: 'Не пришла Мора после апгрейда',
-          body: `Здравствуйте! После апгрейда баланс не обновился. Проверьте, пожалуйста. (демо для @${adminUsername})`,
-        })
-        if (!result.ok) {
-          // createTicket only fails on validation; demo payload is valid
-          const ticketId = createUid()
-          return { ok: true, ticketId }
-        }
-        return result
-      },
-    }),
-    { name: 'a34-support' },
-  ),
-)
-
-syncPersistAcrossTabs(useSupportStore)
+  seedDemoTicket: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) return { ok: false, reason: 'Нужно войти в аккаунт.' }
+    try {
+      const data = await apiFetch<{ ticket: SupportTicket }>(
+        '/api/support/tickets/demo',
+        { method: 'POST', token },
+      )
+      set({ tickets: upsertTicket(get().tickets, data.ticket), loadError: null })
+      return { ok: true, ticket: data.ticket }
+    } catch (err) {
+      return {
+        ok: false,
+        reason: reasonFromError(err, 'Не удалось создать демо-обращение'),
+      }
+    }
+  },
+}))
 
 export function selectTicketsForUser(userId: string) {
   return (state: SupportState) =>

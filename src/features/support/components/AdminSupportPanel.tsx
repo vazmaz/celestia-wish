@@ -30,6 +30,8 @@ function categoryLabel(id: SupportTicket['category']): string {
 export function AdminSupportPanel() {
   const me = useAuthStore(selectSessionUser)
   const tickets = useSupportStore((s) => s.tickets)
+  const loadError = useSupportStore((s) => s.loadError)
+  const loadTickets = useSupportStore((s) => s.loadTickets)
   const openCount = useSupportStore(selectOpenTicketCount)
   const reply = useSupportStore((s) => s.reply)
   const setStatus = useSupportStore((s) => s.setStatus)
@@ -56,19 +58,20 @@ export function AdminSupportPanel() {
   const selected = sorted.find((t) => t.id === selectedId) ?? sorted[0] ?? null
 
   useEffect(() => {
+    void loadTickets()
+  }, [loadTickets])
+
+  useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [selected?.id, selected?.messages.length])
 
   if (!me) return null
 
-  const onReply = (e: FormEvent) => {
+  const onReply = async (e: FormEvent) => {
     e.preventDefault()
     if (!selected) return
-    const result = reply({
+    const result = await reply({
       ticketId: selected.id,
-      authorId: me.id,
-      authorName: me.username,
-      authorRole: 'admin',
       body: replyText,
     })
     if (!result.ok) {
@@ -81,9 +84,9 @@ export function AdminSupportPanel() {
     setMessage('Ответ отправлен.')
   }
 
-  const changeStatus = (status: SupportTicketStatus) => {
+  const changeStatus = async (status: SupportTicketStatus) => {
     if (!selected) return
-    const result = setStatus(selected.id, status)
+    const result = await setStatus(selected.id, status)
     if (!result.ok) {
       setError(result.reason)
       return
@@ -103,22 +106,30 @@ export function AdminSupportPanel() {
         </div>
       </header>
 
-      {sorted.length === 0 ? (
+      {loadError && sorted.length === 0 ? (
+        <p className="form-error">{loadError}</p>
+      ) : sorted.length === 0 ? (
         <div className="admin-support-empty">
           <p className="form-hint">
             Обращений пока нет. Клиент создаёт их кнопкой{' '}
-            <strong>Поддержка</strong> справа внизу (под обычным аккаунтом, не
-            admin), в этом же браузере.
+            <strong>Поддержка</strong> справа внизу под обычным аккаунтом.
+            Тикет сразу появляется здесь, с любого устройства.
           </p>
           <button
             type="button"
             className="btn btn--primary"
             onClick={() => {
-              if (!me) return
-              const result = seedDemoTicket(me.username)
-              setSelectedId(result.ticketId)
-              setMessage('Демо-обращение добавлено.')
-              setError(null)
+              void (async () => {
+                const result = await seedDemoTicket()
+                if (!result.ok) {
+                  setError(result.reason)
+                  setMessage(null)
+                  return
+                }
+                setSelectedId(result.ticket.id)
+                setMessage('Демо-обращение добавлено.')
+                setError(null)
+              })()
             }}
           >
             Добавить демо-обращение

@@ -30,8 +30,10 @@ function categoryLabel(id: SupportCategory): string {
 export function SupportWidget() {
   const user = useAuthStore(selectSessionUser)
   const allTickets = useSupportStore((s) => s.tickets)
+  const loadError = useSupportStore((s) => s.loadError)
   const createTicket = useSupportStore((s) => s.createTicket)
   const reply = useSupportStore((s) => s.reply)
+  const loadTickets = useSupportStore((s) => s.loadTickets)
   const tickets = useMemo(
     () =>
       user
@@ -58,6 +60,10 @@ export function SupportWidget() {
   )
 
   const unanswered = tickets.filter((t) => t.status === 'answered').length
+
+  useEffect(() => {
+    if (open) void loadTickets()
+  }, [open, loadTickets])
 
   useEffect(() => {
     if (view === 'thread') {
@@ -90,31 +96,22 @@ export function SupportWidget() {
     setReplyText('')
   }
 
-  const onCreate = (e: FormEvent) => {
+  const onCreate = async (e: FormEvent) => {
     e.preventDefault()
-    const result = createTicket({
-      userId: user.id,
-      username: user.username,
-      category,
-      subject,
-      body,
-    })
+    const result = await createTicket({ category, subject, body })
     if (!result.ok) {
       setError(result.reason)
       return
     }
     resetNewForm()
-    openThread(result.ticketId)
+    openThread(result.ticket.id)
   }
 
-  const onReply = (e: FormEvent) => {
+  const onReply = async (e: FormEvent) => {
     e.preventDefault()
     if (!activeTicket) return
-    const result = reply({
+    const result = await reply({
       ticketId: activeTicket.id,
-      authorId: user.id,
-      authorName: user.username,
-      authorRole: 'user',
       body: replyText,
     })
     if (!result.ok) {
@@ -167,7 +164,9 @@ export function SupportWidget() {
                   Новое обращение
                 </button>
 
-                {tickets.length === 0 ? (
+                {loadError && tickets.length === 0 ? (
+                  <p className="form-error">{loadError}</p>
+                ) : tickets.length === 0 ? (
                   <p className="support-empty">
                     Пока нет обращений. Напишите, если что-то пошло не так с
                     балансом, баттлом или апгрейдом.

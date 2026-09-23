@@ -27,6 +27,7 @@ model User {
   inventory    Json     @default("[]")
   createdAt    DateTime @default(now())
   topups       Topup[]
+  tickets      SupportTicket[]
 }
 
 model Topup {
@@ -40,4 +41,62 @@ model Topup {
   paidAt            DateTime?
 
   @@index([userId])
+}
+
+/** Singleton (id = "default"): ЮKassa credentials from admin UI. */
+model PaymentSettings {
+  id           String   @id @default("default")
+  yooShopId    String?
+  yooSecretKey String?
+  publicAppUrl String?
+  updatedAt    DateTime @updatedAt
+}
+
+enum SupportCategory {
+  balance
+  battle
+  upgrade
+  account
+  other
+}
+
+enum SupportTicketStatus {
+  open
+  answered
+  closed
+}
+
+enum SupportAuthorRole {
+  user
+  admin
+  system
+}
+
+model SupportTicket {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username  String
+  category  SupportCategory
+  subject   String
+  status    SupportTicketStatus @default(open)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  messages  SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SupportMessage {
+  id         String            @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  authorName String
+  authorRole SupportAuthorRole
+  body       String
+  createdAt  DateTime          @default(now())
+
+  @@index([ticketId])
 }

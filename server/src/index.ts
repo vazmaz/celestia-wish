@@ -4,6 +4,7 @@ import { ensureAdminSeeded } from './auth.js'
 import { adminRouter } from './routes/admin.js'
 import { authRouter } from './routes/auth.js'
 import { meRouter } from './routes/me.js'
+import { supportRouter } from './routes/support.js'
 import { paymentsRouter, topupsRouter } from './routes/topups.js'
 
 const app = express()
@@ -29,6 +30,7 @@ app.use('/api/me', meRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/topups', topupsRouter)
 app.use('/api/payments', paymentsRouter)
+app.use('/api/support', supportRouter)
 
 app.use(
   (

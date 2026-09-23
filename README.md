@@ -10,7 +10,7 @@
 - **БД:** PostgreSQL (Railway)
 - State: Zustand. Анимации: CSS + Framer Motion.
 
-Аккаунты, баланс, инвентарь и **пополнения** хранятся на сервере.
+Аккаунты, баланс, инвентарь, **пополнения** и **поддержка** хранятся на сервере.
 
 ## Локальный запуск
 
@@ -53,10 +53,13 @@ npm run dev
    - `DATABASE_URL` — из Postgres plugin (Railway подставит)
    - `JWT_SECRET` — длинная случайная строка
    - `CORS_ORIGIN` — URL Vercel, например `https://your-app.vercel.app`
+   - `PUBLIC_APP_URL` — тот же URL фронта (для return_url ЮKassa)
    - `ADMIN_USERNAME` / `ADMIN_PASSWORD`
-   - `DEMO_PAYMENTS=true` (пока без ЮKassa)
+   - `YOOKASSA_SHOP_ID` / `YOOKASSA_SECRET_KEY` — из кабинета ЮKassa
+   - `DEMO_PAYMENTS=false` на проде (с ЮKassa)
 5. Generate domain у API-сервиса → скопируй URL (`https://….up.railway.app`).
-
+6. В [кабинете ЮKassa](https://yookassa.ru/my) → HTTP-уведомления:
+   URL `https://….up.railway.app/api/payments/webhook`, событие `payment.succeeded`.
 ### Vercel (фронт)
 
 1. [vercel.com](https://vercel.com) → Import GitHub repo (корень проекта, не `server`).
@@ -87,10 +90,15 @@ public/         — картинки кейсов/предметов
 | POST | `/api/auth/login` | Вход → JWT |
 | GET | `/api/auth/me` | Текущий пользователь |
 | PATCH | `/api/me/economy` | Синхрон баланса/инвентаря |
-| POST | `/api/topups` | Создать пополнение (`pending`) |
-| POST | `/api/topups/:id/confirm-demo` | Демо-оплата → `paid` + баланс |
-| POST | `/api/payments/webhook` | Заготовка под платёжку |
+| POST | `/api/topups` | Создать пополнение → `confirmationUrl` (ЮKassa) или демо |
+| GET | `/api/topups/:id` | Статус + sync с ЮKassa после return |
+| POST | `/api/topups/:id/confirm-demo` | Демо-оплата (только без ключей ЮKassa) |
+| POST | `/api/payments/webhook` | HTTP-уведомления ЮKassa → `paid` + баланс |
 | GET/PATCH | `/api/admin/users…` | Админка |
+| GET | `/api/support/tickets` | Свои обращения; админ видит все |
+| POST | `/api/support/tickets` | Новое обращение |
+| POST | `/api/support/tickets/:id/messages` | Ответ в обращении |
+| PATCH | `/api/support/tickets/:id` | Статус (только админ) |
 
 ## Где менять данные игры
 
@@ -102,9 +110,16 @@ public/         — картинки кейсов/предметов
 
 ## Поддержка
 
-Тикеты поддержки пока в `localStorage` (`a34-support`) — не общая серверная база.
-Auth и баланс уже на сервере.
+Обращения хранятся в Postgres (`SupportTicket` / `SupportMessage`).
+Клиент пишет через кнопку **Поддержка**, админ отвечает во вкладке **Поддержка**.
+На Railway таблицы создаются при старте (`prisma db push`).
 
-## Дальше (платежи)
+## Платежи (ЮKassa)
 
-Заменить `confirm-demo` на ЮKassa/Stripe: создать платёж в `POST /api/topups`, редирект на оплату, зачисление только из `POST /api/payments/webhook` с проверкой подписи. На проде поставь `DEMO_PAYMENTS=false`.
+1. Заведи магазин на [yookassa.ru](https://yookassa.ru) (можно тестовый режим).
+2. Войди как admin → вкладка **ЮKassa** → укажи shopId, секретный ключ и URL сайта.
+   (либо те же значения в `server/.env` — админка имеет приоритет.)
+3. На проде: `DEMO_PAYMENTS=false`.
+4. В кабинете ЮKassa укажи webhook: `https://<api>/api/payments/webhook`.
+
+Курс: **1 Мора = 1 ₽**. Пополнение → редирект на ЮKassa → webhook (или sync при возврате) зачисляет баланс.

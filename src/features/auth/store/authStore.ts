@@ -40,12 +40,22 @@ interface AuthState {
   createTopup: (
     amount: number,
   ) => Promise<
-    | { ok: true; topupId: string; amount: number }
+    | {
+        ok: true
+        topupId: string
+        amount: number
+        mode: 'yookassa' | 'demo'
+        confirmationUrl?: string
+      }
     | { ok: false; reason: string }
   >
-  confirmTopupDemo: (
+  confirmTopupDemo: (topupId: string) => Promise<AuthResult>
+  syncTopup: (
     topupId: string,
-  ) => Promise<AuthResult>
+  ) => Promise<
+    | { ok: true; status: string; amount: number }
+    | { ok: false; reason: string }
+  >
   listTopups: () => Promise<
     | {
         ok: true
@@ -227,6 +237,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await apiFetch<{
             topup: { id: string; amount: number }
+            mode: 'yookassa' | 'demo'
+            confirmationUrl?: string
           }>('/api/topups', {
             method: 'POST',
             token,
@@ -236,6 +248,8 @@ export const useAuthStore = create<AuthState>()(
             ok: true,
             topupId: data.topup.id,
             amount: data.topup.amount,
+            mode: data.mode,
+            confirmationUrl: data.confirmationUrl,
           }
         } catch (err) {
           return { ok: false, reason: reasonFromError(err, 'Ошибка пополнения') }
@@ -254,6 +268,28 @@ export const useAuthStore = create<AuthState>()(
           return { ok: true }
         } catch (err) {
           return { ok: false, reason: reasonFromError(err, 'Оплата не прошла') }
+        }
+      },
+
+      syncTopup: async (topupId) => {
+        const { token } = get()
+        if (!token) return { ok: false, reason: 'Нет сессии' }
+        try {
+          const data = await apiFetch<{
+            topup: { id: string; amount: number; status: string }
+            user: UserAccount
+          }>(`/api/topups/${topupId}`, { token })
+          set({ user: normalizeUser(data.user) })
+          return {
+            ok: true,
+            status: data.topup.status,
+            amount: data.topup.amount,
+          }
+        } catch (err) {
+          return {
+            ok: false,
+            reason: reasonFromError(err, 'Не удалось проверить оплату'),
+          }
         }
       },
 
