@@ -1,0 +1,9 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "cp prisma/schema.postgres.prisma prisma/schema.prisma && npm install && npx prisma generate && npm run build"
+
+[deploy]
+startCommand = "npx prisma db push && npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

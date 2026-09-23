@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum TopupStatus {
+  pending
+  paid
+  failed
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(user)
+  balance      Int      @default(10000)
+  inventory    Json     @default("[]")
+  createdAt    DateTime @default(now())
+  topups       Topup[]
+}
+
+model Topup {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount            Int
+  status            TopupStatus @default(pending)
+  providerPaymentId String?
+  createdAt         DateTime    @default(now())
+  paidAt            DateTime?
+
+  @@index([userId])
+}
