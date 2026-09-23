@@ -628,8 +628,19 @@ export const CASES: CatalogCase[] = [
   }
 ]
 
+/** Old elemental banner ids → new category banners (rematch / stale clients). */
+const CASE_ALIASES: Record<string, string> = {
+  'anemo-breeze': 'elements',
+  'pyro-embers': 'swords',
+  'hydro-tide': 'characters',
+  'electro-pulse': 'shields',
+  'cryo-veil': 'equipment',
+  'dendro-grove': 'pets',
+}
+
 export function getCaseById(id: string): CatalogCase | undefined {
-  return CASES.find((c) => c.id === id)
+  const resolved = CASE_ALIASES[id] ?? id
+  return CASES.find((c) => c.id === resolved)
 }
 
 export function entryFeeFor(caseIds: string[]): number {
