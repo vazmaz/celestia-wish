@@ -1,11 +1,56 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CASES, getCaseById } from '../../cases/data/cases'
+import { CrystalAmount } from '../../../shared/components/brand/CrystalAmount'
 import { usePlayerStore } from '../../inventory/store/playerStore'
 import { entryFeeFor } from '../services/battleRoom'
 import { useBattleStore } from '../store/battleStore'
-import type { BattleFormat, BattlePrivacy } from '../types'
+import type { BattleFormat, BattlePrivacy, BattleRoomState } from '../types'
 import { formatLabel } from '../types'
+
+const THUMB_LIMIT = 5
+
+function caseGroups(caseIds: string[]) {
+  const groups: { id: string; count: number; name: string; image?: string }[] = []
+  for (const id of caseIds) {
+    const last = groups[groups.length - 1]
+    if (last?.id === id) {
+      last.count += 1
+      continue
+    }
+    const c = getCaseById(id)
+    groups.push({
+      id,
+      count: 1,
+      name: c?.name ?? id,
+      image: c?.image,
+    })
+  }
+  return groups
+}
+
+function CaseThumbs({ caseIds }: { caseIds: string[] }) {
+  const groups = caseGroups(caseIds)
+  const shown = groups.slice(0, THUMB_LIMIT)
+  const extra = groups.length - shown.length
+  return (
+    <div className="lobby-card__thumbs" aria-hidden>
+      {shown.map((group, index) => (
+        <span
+          key={`${group.id}-${index}`}
+          className="lobby-thumb"
+          title={
+            group.count > 1 ? `${group.name} ×${group.count}` : group.name
+          }
+        >
+          {group.image && <img src={group.image} alt="" />}
+          {group.count > 1 && <em>×{group.count}</em>}
+        </span>
+      ))}
+      {extra > 0 && <span className="lobby-thumb lobby-thumb--more">+{extra}</span>}
+    </div>
+  )
+}
 
 export function BattlesPage() {
   const navigate = useNavigate()
@@ -203,7 +248,7 @@ export function BattlesPage() {
                   )}
                   <div className="battle-case-chip__body">
                     <strong>{c.name}</strong>
-                    <span>{c.price} Мора</span>
+                    <span>{c.price} кристаллов</span>
                   </div>
                   <div className="battle-case-chip__actions">
                     <button
@@ -230,24 +275,23 @@ export function BattlesPage() {
           </div>
 
           <div className="battle-round-queue">
-            <p className="form-hint">Очередь раундов ({selected.length})</p>
+            <p className="form-hint">Очередь раундов · {selected.length}</p>
             <ol className="battle-round-queue__list">
               {selected.map((id, index) => {
                 const c = getCaseById(id)
                 return (
                   <li key={`${id}-${index}`}>
-                    <span className="battle-round-queue__n">R{index + 1}</span>
                     {c?.image && (
                       <img src={c.image} alt="" className="battle-round-queue__img" />
                     )}
-                    <strong>{c?.name ?? id}</strong>
-                    <em>{c?.price ?? 0} Мора</em>
+                    <span className="battle-round-queue__n">{index + 1}</span>
                     <button
                       type="button"
-                      className="btn btn--tiny"
+                      className="battle-round-queue__remove"
                       disabled={selected.length <= 1}
                       onClick={() => removeRoundAt(index)}
-                      aria-label={`Убрать раунд ${index + 1}`}
+                      aria-label={`Убрать раунд ${index + 1}, ${c?.name ?? id}`}
+                      title={`${c?.name ?? id} · ${c?.price ?? 0} кристаллов`}
                     >
                       ×
                     </button>
@@ -260,9 +304,9 @@ export function BattlesPage() {
           <div className="battle-create__footer">
             <div>
               <span className="form-hint">Вход (сумма кейсов)</span>
-              <strong className="fee-value">{fee} Мора</strong>
+              <strong className="fee-value">{fee} кристаллов</strong>
               <span className="form-hint">
-                Баланс: {balance.toLocaleString('ru-RU')} Мора
+                Баланс: {balance.toLocaleString('ru-RU')} кристаллов
               </span>
             </div>
             <div className="battle-create__actions">
@@ -295,39 +339,22 @@ export function BattlesPage() {
           <p className="form-hint">Пока пусто — создай баттл или зайди по коду.</p>
         ) : (
           <div className="lobby-list">
-            {openSeats.map((room) => {
-              const feeRoom = entryFeeFor(room.caseIds)
-              return (
-                <button
-                  key={room.id}
-                  type="button"
-                  className="lobby-card"
-                  onClick={() => {
-                    void (async () => {
-                      const joined = await joinBattle(room.id)
-                      if (!joined.ok) {
-                        setError(joined.reason)
-                        return
-                      }
-                      navigate(`/battles/${room.id}`)
-                    })()
-                  }}
-                >
-                  <div>
-                    <strong>
-                      {room.players.length}/{room.maxPlayers} игроков
-                    </strong>
-                    <p>
-                      {formatLabel(room)} · {room.caseIds.length} кейс(ов) ·{' '}
-                      {feeRoom} Мора · Highest
-                      {' · '}
-                      {room.players.map((p) => p.name).join(', ')}
-                    </p>
-                  </div>
-                  <span className="lobby-card__code">{room.inviteCode}</span>
-                </button>
-              )
-            })}
+            {openSeats.map((room) => (
+              <BattleFeedCard
+                key={room.id}
+                room={room}
+                onClick={() => {
+                  void (async () => {
+                    const joined = await joinBattle(room.id)
+                    if (!joined.ok) {
+                      setError(joined.reason)
+                      return
+                    }
+                    navigate(`/battles/${room.id}`)
+                  })()
+                }}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -339,27 +366,57 @@ export function BattlesPage() {
         ) : (
           <div className="lobby-list">
             {live.map((room) => (
-              <Link
-                key={room.id}
-                to={`/battles/${room.id}`}
-                className="lobby-card lobby-card--live"
-              >
-                <div>
-                  <strong>
-                    Live · раунд {room.currentRound + 1}/{room.totalRounds}
-                  </strong>
-                  <p>
-                    {formatLabel(room)} ·{' '}
-                    {room.players.map((p) => p.name).join(' vs ')} ·{' '}
-                    {entryFeeFor(room.caseIds)} Мора
-                  </p>
-                </div>
-                <span className="lobby-card__code">Смотреть</span>
-              </Link>
+              <BattleFeedCard key={room.id} room={room} live />
             ))}
           </div>
         )}
       </section>
     </div>
+  )
+}
+
+function BattleFeedCard({
+  room,
+  live = false,
+  onClick,
+}: {
+  room: BattleRoomState
+  live?: boolean
+  onClick?: () => void
+}) {
+  const names = room.players.map((p) => p.name).join(live ? ' vs ' : ', ')
+  const title = live
+    ? `Раунд ${room.currentRound + 1}/${room.totalRounds}`
+    : `${room.players.length}/${room.maxPlayers}`
+  const body = (
+    <>
+      <CaseThumbs caseIds={room.caseIds} />
+      <div className="lobby-card__body">
+        <strong>
+          {formatLabel(room)} · {title}
+        </strong>
+        <span>{names || 'Ожидание'}</span>
+      </div>
+      <div className="lobby-card__aside">
+        <CrystalAmount value={entryFeeFor(room.caseIds)} />
+        <span className="lobby-card__code">
+          {live ? 'Смотреть' : room.inviteCode}
+        </span>
+      </div>
+    </>
+  )
+
+  if (live) {
+    return (
+      <Link to={`/battles/${room.id}`} className="lobby-card lobby-card--live">
+        {body}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" className="lobby-card" onClick={onClick}>
+      {body}
+    </button>
   )
 }

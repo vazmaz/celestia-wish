@@ -185,63 +185,74 @@ export function Roulette({
     let rafStart = 0
     let tickRaf = 0
     let timer = 0
+    let waitTries = 0
+
+    const beginSpin = () => {
+      if (cancelled) return
+      const track = trackRef.current
+      const viewport = viewportRef.current
+      if (!track || !viewport) return
+
+      const span = vertical ? viewport.clientHeight : viewport.clientWidth
+      // Grid lanes can paint at 0 width for a frame — wait until measurable.
+      if (span < 8 && waitTries < 30) {
+        waitTries += 1
+        rafOuter = requestAnimationFrame(beginSpin)
+        return
+      }
+
+      const target = measureCenterOffset(
+        track,
+        viewport,
+        WIN_INDEX,
+        stride,
+        itemSize,
+        vertical,
+      )
+      const startOffset = Math.max(0, target - stride * 18)
+      setOffset(startOffset)
+
+      const beginTicks = () => {
+        if (!audible || cancelled) return
+        sfx.spinStart(spinVariant)
+        const travel = target - startOffset
+        const startedAt = performance.now()
+        let lastIndex = -1
+        let landed = false
+
+        const step = (now: number) => {
+          if (cancelled) return
+          const t = Math.min(1, (now - startedAt) / durationMs)
+          const current = startOffset + travel * easeRoulette(t)
+          const idx = Math.round(current / stride)
+          if (idx !== lastIndex) {
+            sfx.tick(t)
+            lastIndex = idx
+          }
+          if (t < 1) {
+            tickRaf = requestAnimationFrame(step)
+          } else if (!landed) {
+            landed = true
+            sfx.land()
+          }
+        }
+        tickRaf = requestAnimationFrame(step)
+      }
+
+      rafStart = requestAnimationFrame(() => {
+        if (cancelled) return
+        setActive(true)
+        setOffset(target)
+        beginTicks()
+      })
+
+      timer = window.setTimeout(() => {
+        onDoneRef.current()
+      }, durationMs + 80)
+    }
 
     rafOuter = requestAnimationFrame(() => {
-      rafInner = requestAnimationFrame(() => {
-        if (cancelled) return
-        const track = trackRef.current
-        const viewport = viewportRef.current
-        if (!track || !viewport) return
-
-        const target = measureCenterOffset(
-          track,
-          viewport,
-          WIN_INDEX,
-          stride,
-          itemSize,
-          vertical,
-        )
-        const startOffset = Math.max(0, target - stride * 18)
-        setOffset(startOffset)
-
-        const beginTicks = () => {
-          if (!audible || cancelled) return
-          sfx.spinStart(spinVariant)
-          const travel = target - startOffset
-          const startedAt = performance.now()
-          let lastIndex = -1
-          let landed = false
-
-          const step = (now: number) => {
-            if (cancelled) return
-            const t = Math.min(1, (now - startedAt) / durationMs)
-            const current = startOffset + travel * easeRoulette(t)
-            const idx = Math.round(current / stride)
-            if (idx !== lastIndex) {
-              sfx.tick(t)
-              lastIndex = idx
-            }
-            if (t < 1) {
-              tickRaf = requestAnimationFrame(step)
-            } else if (!landed) {
-              landed = true
-              sfx.land()
-            }
-          }
-          tickRaf = requestAnimationFrame(step)
-        }
-
-        rafStart = requestAnimationFrame(() => {
-          if (cancelled) return
-          setActive(true)
-          setOffset(target)
-          beginTicks()
-        })
-
-        timer = window.setTimeout(() => {
-          onDoneRef.current()
-        }, durationMs + 80)
-      })
+      rafInner = requestAnimationFrame(beginSpin)
     })
 
     return () => {
@@ -316,7 +327,11 @@ export function Roulette({
                 >
                   <div className="roulette__item-visual">
                     {item.image ? (
-                      <img src={item.image} alt="" />
+                      <img
+                        className={`item-art--${item.rarity}`}
+                        src={item.image}
+                        alt=""
+                      />
                     ) : (
                       <span>{item.name.slice(0, 1)}</span>
                     )}

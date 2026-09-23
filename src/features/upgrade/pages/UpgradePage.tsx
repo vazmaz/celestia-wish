@@ -206,7 +206,11 @@ export function UpgradePage() {
                 >
                   {item ? (
                     <>
-                      <img src={item.image} alt="" />
+                      <img
+                        className={`item-art--${item.rarity}`}
+                        src={item.image}
+                        alt=""
+                      />
                       <span>{item.name}</span>
                     </>
                   ) : (
@@ -250,7 +254,11 @@ export function UpgradePage() {
           <div className="upgrade-preview-grid">
             {pool.slice(0, 8).map((item) => (
               <div key={item.id} className="upgrade-preview-chip" title={item.name}>
-                <img src={item.image} alt="" />
+                <img
+                  className={`item-art--${item.rarity}`}
+                  src={item.image}
+                  alt=""
+                />
                 <span>{item.name}</span>
               </div>
             ))}
@@ -266,7 +274,7 @@ export function UpgradePage() {
 
           <div className="upgrade-fee">
             <span>Комиссия</span>
-            <strong>{fee} Мора</strong>
+            <strong>{fee} кристаллов</strong>
             <em>10% от средней цены жертвы</em>
           </div>
         </div>
@@ -288,7 +296,7 @@ export function UpgradePage() {
           disabled={!canSubmit}
           onClick={() => setConfirmOpen(true)}
         >
-          Upgrade · {fee} Мора
+          Upgrade · {fee} кристаллов
         </button>
       </div>
 
@@ -310,11 +318,15 @@ export function UpgradePage() {
                 disabled={selectedUids.length >= UPGRADE_COST || phase !== 'pick'}
                 onClick={() => toggleSelect(item.uid)}
               >
-                <img src={item.image} alt="" />
+                <img
+                  className={`item-art--${item.rarity}`}
+                  src={item.image}
+                  alt=""
+                />
                 <div>
                   <RarityBadge rarity={item.rarity} compact />
                   <strong>{item.name}</strong>
-                  <span>{item.value} Мора</span>
+                  <span>{item.value} кристаллов</span>
                 </div>
               </button>
             ))}
@@ -343,7 +355,7 @@ export function UpgradePage() {
             >
               <h2>Подтвердить Upgrade?</h2>
               <p>
-                Списать {UPGRADE_COST}× {RARITY_META[sourceRarity].label} и {fee} Мора.
+                Списать {UPGRADE_COST}× {RARITY_META[sourceRarity].label} и {fee} кристаллов.
                 Получишь 1× {targetRarity ? RARITY_META[targetRarity].label : '—'}.
               </p>
               <div className="result-modal__actions">
@@ -411,11 +423,15 @@ export function UpgradePage() {
             >
               <p className="result-modal__eyebrow">Upgrade успешен</p>
               <div className="result-modal__visual">
-                <img src={result.image} alt="" />
+                <img
+                  className={`item-art--${result.rarity}`}
+                  src={result.image}
+                  alt=""
+                />
               </div>
               <RarityBadge rarity={result.rarity} />
               <h2 className="result-modal__name">{result.name}</h2>
-              <p className="result-modal__value">{result.value} Мора</p>
+              <p className="result-modal__value">{result.value} кристаллов</p>
               <div className="result-modal__actions">
                 <button
                   type="button"

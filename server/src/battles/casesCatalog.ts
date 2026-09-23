@@ -21,608 +21,608 @@ export type CatalogCase = {
 
 export const CASES: CatalogCase[] = [
   {
-    "id": "anemo-breeze",
-    "name": "Anemo Breeze",
+    "id": "elements",
+    "name": "Элементы",
     "price": 160,
-    "image": "/cases/case-anemo.png",
+    "image": "/cases/case-elements.png",
     "items": [
       {
-        "id": "an-1",
-        "name": "Dandelion Seed",
+        "id": "el-1",
+        "name": "Искра Анемо",
         "rarity": "common",
         "chance": 34.33,
         "value": 20,
         "accent": "#7a9e96",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-1.png"
       },
       {
-        "id": "an-2",
-        "name": "Windcatcher Ribbon",
+        "id": "el-2",
+        "name": "Уголь Пиро",
         "rarity": "common",
         "chance": 24.94,
         "value": 26,
-        "accent": "#8bb0a8",
-        "image": "/items/item-anemo.png"
+        "accent": "#a87868",
+        "image": "/items/skin-el-2.png"
       },
       {
-        "id": "an-3",
-        "name": "Breeze Charm",
+        "id": "el-3",
+        "name": "Капля Гидро",
         "rarity": "common",
         "chance": 18.7,
         "value": 32,
-        "accent": "#9cc4bb",
-        "image": "/items/item-anemo.png"
+        "accent": "#6a8aa0",
+        "image": "/items/skin-el-3.png"
       },
       {
-        "id": "an-4",
-        "name": "Skyfeather Bow",
+        "id": "el-4",
+        "name": "Осколок Электро",
         "rarity": "uncommon",
         "chance": 5.73,
         "value": 70,
         "accent": "#3ecf9a",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-4.png"
       },
       {
-        "id": "an-5",
-        "name": "Wanderer Cape",
+        "id": "el-5",
+        "name": "Кристалл Крио",
         "rarity": "uncommon",
         "chance": 4.41,
         "value": 88,
         "accent": "#45d9a8",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-5.png"
       },
       {
-        "id": "an-6",
-        "name": "Gale Catalyst",
+        "id": "el-6",
+        "name": "Семя Дендро",
         "rarity": "rare",
         "chance": 4.41,
         "value": 180,
         "accent": "#4db8ff",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-6.png"
       },
       {
-        "id": "an-7",
-        "name": "Vortex Claymore",
+        "id": "el-7",
+        "name": "Призма Гео",
         "rarity": "rare",
         "chance": 3.07,
         "value": 240,
         "accent": "#5ac4ff",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-7.png"
       },
       {
-        "id": "an-8",
-        "name": "Freedom Codex",
+        "id": "el-8",
+        "name": "Ядро Резонанса",
         "rarity": "epic",
         "chance": 2.42,
         "value": 520,
         "accent": "#b48cff",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-8.png"
       },
       {
-        "id": "an-9",
-        "name": "Skyward Zephyr",
+        "id": "el-9",
+        "name": "Вижн Семи Стихий",
         "rarity": "epic",
         "chance": 1.33,
         "value": 680,
         "accent": "#c9a0ff",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-9.png"
       },
       {
-        "id": "an-10",
-        "name": "Winds of Celestia",
+        "id": "el-10",
+        "name": "Сердце Небес",
         "rarity": "legendary",
         "chance": 0.66,
         "value": 2400,
         "accent": "#f0d078",
-        "image": "/items/item-anemo.png"
+        "image": "/items/skin-el-10.png"
       }
     ]
   },
   {
-    "id": "pyro-embers",
-    "name": "Pyro Embers",
+    "id": "swords",
+    "name": "Мечи",
     "price": 200,
-    "image": "/cases/case-pyro.png",
+    "image": "/cases/case-swords.png",
     "items": [
       {
-        "id": "py-1",
-        "name": "Ashflake",
+        "id": "sw-1",
+        "name": "Тупой Клинок",
         "rarity": "common",
         "chance": 33.95,
         "value": 24,
-        "accent": "#a87868",
-        "image": "/items/item-pyro.png"
+        "accent": "#8a9098",
+        "image": "/items/skin-sw-1.png"
       },
       {
-        "id": "py-2",
-        "name": "Ember Seal",
+        "id": "sw-2",
+        "name": "Страннический Меч",
         "rarity": "common",
         "chance": 25.89,
         "value": 30,
-        "accent": "#b88874",
-        "image": "/items/item-pyro.png"
+        "accent": "#9a9ea8",
+        "image": "/items/skin-sw-2.png"
       },
       {
-        "id": "py-3",
-        "name": "Cinder Ring",
+        "id": "sw-3",
+        "name": "Стальной Рапир",
         "rarity": "common",
         "chance": 17.8,
         "value": 38,
-        "accent": "#c49884",
-        "image": "/items/item-pyro.png"
+        "accent": "#a8b0bc",
+        "image": "/items/skin-sw-3.png"
       },
       {
-        "id": "py-4",
-        "name": "Blaze Dagger",
+        "id": "sw-4",
+        "name": "Клинок Ветра",
         "rarity": "uncommon",
         "chance": 5.58,
         "value": 85,
         "accent": "#3ecf9a",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-4.png"
       },
       {
-        "id": "py-5",
-        "name": "Crimson Scarf",
+        "id": "sw-5",
+        "name": "Пламенный Тесак",
         "rarity": "uncommon",
         "chance": 4.75,
         "value": 100,
         "accent": "#45d9a8",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-5.png"
       },
       {
-        "id": "py-6",
-        "name": "Inferno Polearm",
+        "id": "sw-6",
+        "name": "Лунная Катана",
         "rarity": "rare",
         "chance": 4.3,
         "value": 220,
         "accent": "#4db8ff",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-6.png"
       },
       {
-        "id": "py-7",
-        "name": "Solar Mask",
+        "id": "sw-7",
+        "name": "Грозовой Фальшион",
         "rarity": "rare",
         "chance": 3.01,
         "value": 280,
         "accent": "#5ac4ff",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-7.png"
       },
       {
-        "id": "py-8",
-        "name": "Phoenix Gauntlet",
+        "id": "sw-8",
+        "name": "Клинок Вечности",
         "rarity": "epic",
         "chance": 2.36,
         "value": 600,
         "accent": "#b48cff",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-8.png"
       },
       {
-        "id": "py-9",
-        "name": "Lavawalker Relic",
+        "id": "sw-9",
+        "name": "Песнь Небес",
         "rarity": "epic",
         "chance": 1.5,
         "value": 780,
         "accent": "#c9a0ff",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-9.png"
       },
       {
-        "id": "py-10",
-        "name": "Heart of the Pyro Archon",
+        "id": "sw-10",
+        "name": "Мусо но Хитотачи",
         "rarity": "legendary",
         "chance": 0.86,
         "value": 2800,
         "accent": "#f0d078",
-        "image": "/items/item-pyro.png"
+        "image": "/items/skin-sw-10.png"
       }
     ]
   },
   {
-    "id": "hydro-tide",
-    "name": "Hydro Tide",
+    "id": "characters",
+    "name": "Персонажи",
     "price": 190,
-    "image": "/cases/case-hydro.png",
+    "image": "/cases/case-characters.png",
     "items": [
       {
-        "id": "hy-1",
-        "name": "Tide Pearl",
+        "id": "ch-1",
+        "name": "Новичок Путешественник",
         "rarity": "common",
         "chance": 35.3,
         "value": 22,
-        "accent": "#6a8aa0",
-        "image": "/items/item-hydro.png"
+        "accent": "#a09098",
+        "image": "/items/skin-ch-1.png"
       },
       {
-        "id": "hy-2",
-        "name": "Seafoam Token",
+        "id": "ch-2",
+        "name": "Разведчик Гильдии",
         "rarity": "common",
         "chance": 24.06,
         "value": 28,
-        "accent": "#7a9ab0",
-        "image": "/items/item-hydro.png"
+        "accent": "#b0a0a8",
+        "image": "/items/skin-ch-2.png"
       },
       {
-        "id": "hy-3",
-        "name": "Ripple Charm",
+        "id": "ch-3",
+        "name": "Ученик Академии",
         "rarity": "common",
         "chance": 17.65,
         "value": 34,
-        "accent": "#8aaac0",
-        "image": "/items/item-hydro.png"
+        "accent": "#c0b0b8",
+        "image": "/items/skin-ch-3.png"
       },
       {
-        "id": "hy-4",
-        "name": "Fountain Blade",
+        "id": "ch-4",
+        "name": "Рыцарь Фавония",
         "rarity": "uncommon",
         "chance": 5.75,
         "value": 78,
         "accent": "#3ecf9a",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-4.png"
       },
       {
-        "id": "hy-5",
-        "name": "Mariner Gloves",
+        "id": "ch-5",
+        "name": "Жрица Святилища",
         "rarity": "uncommon",
         "chance": 4.42,
         "value": 95,
         "accent": "#45d9a8",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-5.png"
       },
       {
-        "id": "hy-6",
-        "name": "Abyss Catalyst",
+        "id": "ch-6",
+        "name": "Капитан Флота",
         "rarity": "rare",
         "chance": 4.42,
         "value": 200,
         "accent": "#4db8ff",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-6.png"
       },
       {
-        "id": "hy-7",
-        "name": "Wavebreaker Bow",
+        "id": "ch-7",
+        "name": "Теневой Охотник",
         "rarity": "rare",
         "chance": 3.5,
         "value": 260,
         "accent": "#5ac4ff",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-7.png"
       },
       {
-        "id": "hy-8",
-        "name": "Court of Springs",
+        "id": "ch-8",
+        "name": "Архимаг Сумеру",
         "rarity": "epic",
         "chance": 2.47,
         "value": 560,
         "accent": "#b48cff",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-8.png"
       },
       {
-        "id": "hy-9",
-        "name": "Oceanid Tear",
+        "id": "ch-9",
+        "name": "Генерал Инадзумы",
         "rarity": "epic",
         "chance": 1.55,
         "value": 720,
         "accent": "#c9a0ff",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-9.png"
       },
       {
-        "id": "hy-10",
-        "name": "Hydro Sovereign Orb",
+        "id": "ch-10",
+        "name": "Архонт Семи Престолов",
         "rarity": "legendary",
         "chance": 0.88,
         "value": 2600,
         "accent": "#f0d078",
-        "image": "/items/item-hydro.png"
+        "image": "/items/skin-ch-10.png"
       }
     ]
   },
   {
-    "id": "electro-pulse",
-    "name": "Electro Pulse",
+    "id": "shields",
+    "name": "Щиты",
     "price": 220,
-    "image": "/cases/case-electro.png",
+    "image": "/cases/case-shields.png",
     "items": [
       {
-        "id": "el-1",
-        "name": "Static Shard",
+        "id": "sh-1",
+        "name": "Деревянный Баклер",
         "rarity": "common",
         "chance": 36.52,
         "value": 28,
-        "accent": "#8a7aa0",
-        "image": "/items/item-electro.png"
+        "accent": "#7a8a80",
+        "image": "/items/skin-sh-1.png"
       },
       {
-        "id": "el-2",
-        "name": "Thunder Tag",
+        "id": "sh-2",
+        "name": "Кожаный Оплот",
         "rarity": "common",
         "chance": 27.18,
         "value": 35,
-        "accent": "#9a8ab0",
-        "image": "/items/item-electro.png"
+        "accent": "#8a9a90",
+        "image": "/items/skin-sh-2.png"
       },
       {
-        "id": "el-3",
-        "name": "Amethyst Bead",
+        "id": "sh-3",
+        "name": "Железная Круглая",
         "rarity": "common",
         "chance": 19.94,
         "value": 42,
-        "accent": "#aa9ac0",
-        "image": "/items/item-electro.png"
+        "accent": "#9aa8a0",
+        "image": "/items/skin-sh-3.png"
       },
       {
-        "id": "el-4",
-        "name": "Raiden Ribbon",
+        "id": "sh-4",
+        "name": "Щит Ветров",
         "rarity": "uncommon",
         "chance": 3.7,
         "value": 100,
         "accent": "#3ecf9a",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-4.png"
       },
       {
-        "id": "el-5",
-        "name": "Storm Ward",
+        "id": "sh-5",
+        "name": "Ледяная Стена",
         "rarity": "uncommon",
         "chance": 3.09,
         "value": 125,
         "accent": "#45d9a8",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-5.png"
       },
       {
-        "id": "el-6",
-        "name": "Lightning Katana",
+        "id": "sh-6",
+        "name": "Громовой Бастион",
         "rarity": "rare",
         "chance": 3,
         "value": 260,
         "accent": "#4db8ff",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-6.png"
       },
       {
-        "id": "el-7",
-        "name": "Vision Case: Electro",
+        "id": "sh-7",
+        "name": "Щит Глубин",
         "rarity": "rare",
         "chance": 2.47,
         "value": 320,
         "accent": "#5ac4ff",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-7.png"
       },
       {
-        "id": "el-8",
-        "name": "Eternity Scroll",
+        "id": "sh-8",
+        "name": "Эгида Вечности",
         "rarity": "epic",
         "chance": 1.85,
         "value": 700,
         "accent": "#b48cff",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-8.png"
       },
       {
-        "id": "el-9",
-        "name": "Baal Echo",
+        "id": "sh-9",
+        "name": "Барьер Архонта",
         "rarity": "epic",
         "chance": 1.32,
         "value": 900,
         "accent": "#c9a0ff",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-9.png"
       },
       {
-        "id": "el-10",
-        "name": "Musou no Hitotachi",
+        "id": "sh-10",
+        "name": "Небесный Оплот",
         "rarity": "legendary",
         "chance": 0.62,
         "value": 3200,
         "accent": "#f0d078",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-10.png"
       },
       {
-        "id": "el-11",
-        "name": "Engulfing Stars",
+        "id": "sh-11",
+        "name": "Щит Селестии",
         "rarity": "legendary",
         "chance": 0.31,
         "value": 4500,
         "accent": "#ffe08a",
-        "image": "/items/item-electro.png"
+        "image": "/items/skin-sh-11.png"
       }
     ]
   },
   {
-    "id": "cryo-veil",
-    "name": "Cryo Veil",
+    "id": "equipment",
+    "name": "Экипировка",
     "price": 180,
-    "image": "/cases/case-cryo.png",
+    "image": "/cases/case-equipment.png",
     "items": [
       {
-        "id": "cr-1",
-        "name": "Frostflake",
+        "id": "eq-1",
+        "name": "Походные Сапоги",
         "rarity": "common",
         "chance": 36.95,
         "value": 20,
-        "accent": "#7a90a0",
-        "image": "/items/item-cryo.png"
+        "accent": "#8a8070",
+        "image": "/items/skin-eq-1.png"
       },
       {
-        "id": "cr-2",
-        "name": "Snowblind Pin",
+        "id": "eq-2",
+        "name": "Кожаные Перчатки",
         "rarity": "common",
         "chance": 24.11,
         "value": 26,
-        "accent": "#8aa0b0",
-        "image": "/items/item-cryo.png"
+        "accent": "#9a9080",
+        "image": "/items/skin-eq-2.png"
       },
       {
-        "id": "cr-3",
-        "name": "Ice Lace",
+        "id": "eq-3",
+        "name": "Плащ Путника",
         "rarity": "common",
         "chance": 16.06,
         "value": 34,
-        "accent": "#9ab0c0",
-        "image": "/items/item-cryo.png"
+        "accent": "#aaa090",
+        "image": "/items/skin-eq-3.png"
       },
       {
-        "id": "cr-4",
-        "name": "Glacier Spear",
+        "id": "eq-4",
+        "name": "Кольчуга Рыцаря",
         "rarity": "uncommon",
         "chance": 5.72,
         "value": 75,
         "accent": "#3ecf9a",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-4.png"
       },
       {
-        "id": "cr-5",
-        "name": "Winter Cloak",
+        "id": "eq-5",
+        "name": "Пояс Искателя",
         "rarity": "uncommon",
         "chance": 4.83,
         "value": 92,
         "accent": "#45d9a8",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-5.png"
       },
       {
-        "id": "cr-6",
-        "name": "Moonlit Bow",
+        "id": "eq-6",
+        "name": "Тиара Луны",
         "rarity": "rare",
         "chance": 4.41,
         "value": 195,
         "accent": "#4db8ff",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-6.png"
       },
       {
-        "id": "cr-7",
-        "name": "Cryo Vision Case",
+        "id": "eq-7",
+        "name": "Наплечники Бури",
         "rarity": "rare",
         "chance": 3.08,
         "value": 250,
         "accent": "#5ac4ff",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-7.png"
       },
       {
-        "id": "cr-8",
-        "name": "Blizzard Strayer",
+        "id": "eq-8",
+        "name": "Комплект Глубоколесья",
         "rarity": "epic",
         "chance": 2.42,
         "value": 540,
         "accent": "#b48cff",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-8.png"
       },
       {
-        "id": "cr-9",
-        "name": "Ice Queen Diadem",
+        "id": "eq-9",
+        "name": "Доспех Феникса",
         "rarity": "epic",
         "chance": 1.54,
         "value": 700,
         "accent": "#c9a0ff",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-9.png"
       },
       {
-        "id": "cr-10",
-        "name": "Heart of the Cryo Archon",
+        "id": "eq-10",
+        "name": "Реликвия Архонта",
         "rarity": "legendary",
         "chance": 0.88,
         "value": 2500,
         "accent": "#f0d078",
-        "image": "/items/item-cryo.png"
+        "image": "/items/skin-eq-10.png"
       }
     ]
   },
   {
-    "id": "dendro-grove",
-    "name": "Dendro Grove",
+    "id": "pets",
+    "name": "Питомцы",
     "price": 210,
-    "image": "/cases/case-dendro.png",
+    "image": "/cases/case-pets.png",
     "items": [
       {
-        "id": "de-1",
-        "name": "Sprout Chip",
+        "id": "pe-1",
+        "name": "Маленький Слайм",
         "rarity": "common",
         "chance": 36.54,
         "value": 26,
-        "accent": "#6a906e",
-        "image": "/items/item-dendro.png"
+        "accent": "#a09070",
+        "image": "/items/skin-pe-1.png"
       },
       {
-        "id": "de-2",
-        "name": "Leaf Token",
+        "id": "pe-2",
+        "name": "Лесной Лисик",
         "rarity": "common",
         "chance": 27.2,
         "value": 32,
-        "accent": "#7aa07e",
-        "image": "/items/item-dendro.png"
+        "accent": "#b0a080",
+        "image": "/items/skin-pe-2.png"
       },
       {
-        "id": "de-3",
-        "name": "Vine Bracelet",
+        "id": "pe-3",
+        "name": "Кристальный Краб",
         "rarity": "common",
         "chance": 19.94,
         "value": 40,
-        "accent": "#8ab08e",
-        "image": "/items/item-dendro.png"
+        "accent": "#c0b090",
+        "image": "/items/skin-pe-3.png"
       },
       {
-        "id": "de-4",
-        "name": "Jungle Cleaver",
+        "id": "pe-4",
+        "name": "Птенец Анемо",
         "rarity": "uncommon",
         "chance": 3.68,
         "value": 95,
         "accent": "#3ecf9a",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-4.png"
       },
       {
-        "id": "de-5",
-        "name": "Scholar Satchel",
+        "id": "pe-5",
+        "name": "Огненный Котик",
         "rarity": "uncommon",
         "chance": 3.09,
         "value": 115,
         "accent": "#45d9a8",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-5.png"
       },
       {
-        "id": "de-6",
-        "name": "Wisdom Staff",
+        "id": "pe-6",
+        "name": "Лунный Олень",
         "rarity": "rare",
         "chance": 3.08,
         "value": 240,
         "accent": "#4db8ff",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-6.png"
       },
       {
-        "id": "de-7",
-        "name": "Dendro Vision Case",
+        "id": "pe-7",
+        "name": "Грозовой Дракончик",
         "rarity": "rare",
         "chance": 2.46,
         "value": 300,
         "accent": "#5ac4ff",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-7.png"
       },
       {
-        "id": "de-8",
-        "name": "Deepwood Memories",
+        "id": "pe-8",
+        "name": "Страж Садов",
         "rarity": "epic",
         "chance": 1.85,
         "value": 680,
         "accent": "#b48cff",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-8.png"
       },
       {
-        "id": "de-9",
-        "name": "Gilded Dreams",
+        "id": "pe-9",
+        "name": "Феникс Сумеру",
         "rarity": "epic",
         "chance": 1.23,
         "value": 860,
         "accent": "#c9a0ff",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-9.png"
       },
       {
-        "id": "de-10",
-        "name": "Heart of the Dendro Archon",
+        "id": "pe-10",
+        "name": "Дракон Селестии",
         "rarity": "legendary",
         "chance": 0.6,
         "value": 3000,
         "accent": "#f0d078",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-10.png"
       },
       {
-        "id": "de-11",
-        "name": "A Thousand Verdant Suns",
+        "id": "pe-11",
+        "name": "Зверь Тысячи Солнц",
         "rarity": "legendary",
         "chance": 0.33,
         "value": 4800,
         "accent": "#ffe08a",
-        "image": "/items/item-dendro.png"
+        "image": "/items/skin-pe-11.png"
       }
     ]
   }

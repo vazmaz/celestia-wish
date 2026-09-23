@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { RARITY_META } from '../../../features/cases/data/rarities'
 import type { Rarity } from '../../../shared/types'
-import { MoraAmount } from '../brand/MoraAmount'
+import { CrystalAmount } from '../brand/CrystalAmount'
 import { RarityBadge } from './RarityBadge'
 
 interface Props {
@@ -24,10 +24,11 @@ export function ItemTile({
   size = 'md',
 }: Props) {
   const meta = RARITY_META[rarity]
+  const showFx = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary'
 
   return (
     <article
-      className={`item-tile item-tile--${size}`}
+      className={`item-tile item-tile--${size} item-tile--${rarity}`}
       style={
         {
           '--item-accent': accent,
@@ -37,10 +38,19 @@ export function ItemTile({
       }
     >
       <div className="item-tile__visual" aria-hidden>
+        {showFx && <div className="item-tile__aura" />}
         {image ? (
-          <img className="item-tile__image" src={image} alt="" loading="lazy" />
+          <img
+            className={`item-tile__image item-art--${rarity}`}
+            src={image}
+            alt=""
+            loading="lazy"
+          />
         ) : (
           <span className="item-tile__glyph">{name.slice(0, 1)}</span>
+        )}
+        {(rarity === 'epic' || rarity === 'legendary') && (
+          <div className="item-tile__sparkles" />
         )}
         <div className="item-tile__shine" />
       </div>
@@ -50,7 +60,7 @@ export function ItemTile({
         <div className="item-tile__footer">
           {chanceLabel != null && <span>{chanceLabel}</span>}
           {value != null && (
-            <MoraAmount className="item-tile__value" value={value} />
+            <CrystalAmount className="item-tile__value" value={value} />
           )}
         </div>
       </div>

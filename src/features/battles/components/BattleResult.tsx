@@ -74,20 +74,20 @@ export function BattleResult({ battleId, onRematch }: Props) {
           humanWinners.length > 1
             ? ` Пул разделён между ${humanWinners.length} игроками команды.`
             : ''
-        return `Победа команды ${winningTeam}. Пул ${poolValue} Мора.${split}`
+        return `Победа команды ${winningTeam}. Пул ${poolValue} кристаллов.${split}`
       }
       if (participated) {
-        return `Победа команды ${winningTeam}. Пул ${poolValue} Мора уходит соперникам.`
+        return `Победа команды ${winningTeam}. Пул ${poolValue} кристаллов уходит соперникам.`
       }
-      return `Команда ${winningTeam} · пул ${poolValue} Мора · вход ${room.entryFee} Мора.`
+      return `Команда ${winningTeam} · пул ${poolValue} кристаллов · вход ${room.entryFee} кристаллов.`
     }
     if (youWon) {
-      return `Все ${room.drops.length} предметов из пула (${poolValue} Мора) добавлены в инвентарь.`
+      return `Все ${room.drops.length} предметов из пула (${poolValue} кристаллов) добавлены в инвентарь.`
     }
     if (participated) {
-      return `Пул ${poolValue} Мора уходит победителю. Вход списан.`
+      return `Пул ${poolValue} кристаллов уходит победителю. Вход списан.`
     }
-    return `Пул ${poolValue} Мора · вход ${room.entryFee} Мора.`
+    return `Пул ${poolValue} кристаллов · вход ${room.entryFee} кристаллов.`
   })()
 
   return (
@@ -110,7 +110,7 @@ export function BattleResult({ battleId, onRematch }: Props) {
         {teamTotals && winningTeam && (
           <p className="result-hero__teams">
             A {teamTotals.A.toLocaleString('ru-RU')} · B{' '}
-            {teamTotals.B.toLocaleString('ru-RU')} Мора
+            {teamTotals.B.toLocaleString('ru-RU')} кристаллов
           </p>
         )}
         <p className="result-hero__sub">{sub}</p>
@@ -137,7 +137,7 @@ export function BattleResult({ battleId, onRematch }: Props) {
                 </p>
               </div>
               <strong className="result-row__total">
-                {(totals[p.id] ?? 0).toLocaleString('ru-RU')} Мора
+                {(totals[p.id] ?? 0).toLocaleString('ru-RU')} кристаллов
               </strong>
             </div>
           )
@@ -162,7 +162,7 @@ export function BattleResult({ battleId, onRematch }: Props) {
                 <span style={{ color: RARITY_META[d.item.rarity].color }}>
                   {d.item.name}
                 </span>
-                <strong>{d.item.value} Мора</strong>
+                <strong>{d.item.value} кристаллов</strong>
               </li>
             )
           })}

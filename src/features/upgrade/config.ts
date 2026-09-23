@@ -12,7 +12,7 @@ import { RARITY_ORDER } from '../cases/data/rarities'
  */
 export const UPGRADE_COST = 10
 
-/** Fraction of average sacrificed item value charged as Mora fee. */
+/** Fraction of average sacrificed item value charged as a crystal fee. */
 export const UPGRADE_FEE_RATE = 0.1
 
 /** Common → … → Legendary. Last entry cannot be upgraded. */

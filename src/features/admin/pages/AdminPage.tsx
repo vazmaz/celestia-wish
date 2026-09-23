@@ -83,7 +83,7 @@ export function AdminPage() {
       setMessage(null)
       return
     }
-    setMessage(`Баланс ${selected.username} обновлён: ${Math.floor(value)} Мора`)
+    setMessage(`Баланс ${selected.username} обновлён: ${Math.floor(value)} кристаллов`)
     setError(null)
   }
 
@@ -257,7 +257,7 @@ export function AdminPage() {
                           )}
                         </strong>
                         <p>
-                          {user.balance.toLocaleString('ru-RU')} Мора ·{' '}
+                          {user.balance.toLocaleString('ru-RU')} кристаллов ·{' '}
                           {st.count} предм.
                         </p>
                       </div>
@@ -277,7 +277,7 @@ export function AdminPage() {
 
                 <form className="admin-balance-form" onSubmit={onSaveBalance}>
                   <label className="auth-field">
-                    Баланс (Мора)
+                    Баланс (кристаллы)
                     <input
                       className="text-input"
                       type="number"
@@ -310,7 +310,7 @@ export function AdminPage() {
                   <h3>Инвентарь</h3>
                   <p>
                     {stats.count} предметов · суммарная стоимость{' '}
-                    {stats.totalValue.toLocaleString('ru-RU')} Мора
+                    {stats.totalValue.toLocaleString('ru-RU')} кристаллов
                   </p>
                   <div className="inventory-stats">
                     {RARITY_ORDER.map((rarity) =>
@@ -344,7 +344,11 @@ export function AdminPage() {
                           <tr key={item.uid}>
                             <td>
                               <div className="admin-inv-item">
-                                <img src={item.image} alt="" />
+                                <img
+                                  className={`item-art--${item.rarity}`}
+                                  src={item.image}
+                                  alt=""
+                                />
                                 {item.name}
                               </div>
                             </td>

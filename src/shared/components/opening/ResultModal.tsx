@@ -42,14 +42,18 @@ export function ResultModal({ item, onClose, onOpenAgain, canOpenAgain }: Props)
             <p className="result-modal__eyebrow">Wish результат</p>
             <div className="result-modal__visual" aria-hidden>
               {item.image ? (
-                <img src={item.image} alt="" />
+                <img
+                  className={`item-art--${item.rarity}`}
+                  src={item.image}
+                  alt=""
+                />
               ) : (
                 <span>{item.name.slice(0, 1)}</span>
               )}
             </div>
             <RarityBadge rarity={item.rarity} />
             <h2 className="result-modal__name">{item.name}</h2>
-            <p className="result-modal__value">Стоимость: {item.value} Мора</p>
+            <p className="result-modal__value">Стоимость: {item.value} кристаллов</p>
             <div className="result-modal__actions">
               <button type="button" className="btn btn--ghost" onClick={onClose}>
                 В инвентарь

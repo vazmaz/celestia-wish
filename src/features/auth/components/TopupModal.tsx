@@ -69,7 +69,7 @@ export function TopupModal({
         if (res.status === 'paid') {
           syncFromAuth()
           setPending(false)
-          setOk(`Зачислено ${res.amount.toLocaleString('ru-RU')} Мора`)
+          setOk(`Зачислено ${res.amount.toLocaleString('ru-RU')} кристаллов`)
           const refreshed = await listTopups()
           if (refreshed.ok) setHistory(refreshed.topups)
           onPendingHandled?.()
@@ -147,7 +147,7 @@ export function TopupModal({
     }
 
     syncFromAuth()
-    setOk(`Зачислено ${created.amount.toLocaleString('ru-RU')} Мора`)
+    setOk(`Зачислено ${created.amount.toLocaleString('ru-RU')} кристаллов`)
     const refreshed = await listTopups()
     if (refreshed.ok) setHistory(refreshed.topups)
   }
@@ -168,7 +168,7 @@ export function TopupModal({
         </header>
 
         <p className="form-hint">
-          1 Мора = 1 ₽. Оплата через ЮKassa (карта, СБП и др.). После оплаты
+          1 кристалл = 1 ₽. Оплата через ЮKassa (карта, СБП и др.). После оплаты
           баланс зачисляется автоматически.
         </p>
 
@@ -187,7 +187,7 @@ export function TopupModal({
           </div>
 
           <label className="auth-field">
-            Сумма (Мора / ₽)
+            Сумма (кристаллы / ₽)
             <input
               className="text-input"
               type="number"

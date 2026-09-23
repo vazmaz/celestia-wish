@@ -111,7 +111,7 @@ export default function UpgradeEconomy() {
           ]}
         />
         <Text size="small" tone="tertiary">
-          Мора. EV результата — среднее по глобальному пулу следующей
+          Кристаллы. EV результата — среднее по глобальному пулу следующей
           редкости (равномерный ролл). Продать 10 предметов всегда выгоднее,
           чем апгрейдить.
         </Text>
@@ -123,7 +123,7 @@ export default function UpgradeEconomy() {
         <Stack gap={8}>
           <H2>Пулы результата</H2>
           <Text size="small" tone="tertiary">
-            Ось X — редкость. Ось Y — средняя цена предмета в пуле, Мора.
+            Ось X — редкость. Ось Y — средняя цена предмета в пуле, кристаллы.
             Апгрейд кидает равномерно по всем уникальным id этой редкости из
             6 кейсов.
           </Text>
@@ -131,7 +131,7 @@ export default function UpgradeEconomy() {
             categories={["3★", "3★+", "4★", "4★+", "5★"]}
             series={[
               {
-                name: "Средняя цена пула, Мора",
+                name: "Средняя цена пула, кристаллы",
                 data: [30, 93, 245, 687, 3225],
               },
             ]}
@@ -222,7 +222,7 @@ export default function UpgradeEconomy() {
           возврат вниз.
         </Text>
         <Table
-          headers={["Статья", "Мора"]}
+          headers={["Статья", "Кристаллы"]}
           columnAlign={["left", "right"]}
           rows={[
             ["Открытий Anemo", "12 825"],

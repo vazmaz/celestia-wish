@@ -80,7 +80,7 @@ export function CasePage() {
           </div>
           <div className="case-stage__price">
             <span>Цена</span>
-            <strong>{caseDef.price} Мора</strong>
+            <strong>{caseDef.price} кристаллов</strong>
           </div>
         </header>
 
@@ -111,7 +111,7 @@ export function CasePage() {
               onClick={handleOpen}
               disabled={!canAfford}
             >
-              Сделать Wish · {caseDef.price} Мора
+              Сделать Wish · {caseDef.price} кристаллов
             </button>
           )}
 

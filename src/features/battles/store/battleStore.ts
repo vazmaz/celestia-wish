@@ -149,6 +149,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     try {
       const { room } = await joinBattleApi(token, id)
       get().upsertRoom(room)
+      if (room.status === 'running') {
+        void useAuthStore.getState().refreshMe()
+      }
       void get().refreshFeed()
       return { ok: true }
     } catch (err) {
@@ -194,6 +197,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     try {
       const room = await addBotApi(token, battleId, luck)
       get().upsertRoom(room)
+      if (room.status === 'running') {
+        void useAuthStore.getState().refreshMe()
+      }
       return { ok: true }
     } catch (err) {
       return { ok: false, reason: battleApiReason(err, 'Не удалось добавить бота') }

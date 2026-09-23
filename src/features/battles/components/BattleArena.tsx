@@ -4,18 +4,23 @@ import { getCaseById } from '../../cases/data/cases'
 import { Roulette } from '../../../shared/components/opening/Roulette'
 import { RARITY_META, RARITY_ORDER } from '../../cases/data/rarities'
 import { sfx } from '../../../shared/lib/sfx'
+import { CrystalAmount } from '../../../shared/components/brand/CrystalAmount'
 import { selectSessionUser, useAuthStore } from '../../auth/store/authStore'
 import { dropsForRound, isParticipant } from '../services/battleRoom'
 import { sumPlayerTotals, sumTeamTotals } from '../services/roundResolver'
 import { useBattleStore } from '../store/battleStore'
 import type { CaseItem, Rarity } from '../../../shared/types'
-import type { TeamId } from '../types'
+import type { BattlePlayer, TeamId } from '../types'
 
 const BATTLE_SPIN_MS = 3800
 const noop = () => undefined
 
 interface Props {
   battleId: string
+}
+
+function playerInitial(name: string) {
+  return (name.trim().slice(0, 1) || '?').toUpperCase()
 }
 
 export function BattleArena({ battleId }: Props) {
@@ -98,10 +103,6 @@ export function BattleArena({ battleId }: Props) {
 
   const roomStatus = room?.status
   const youId = me?.id
-  const yourTeam = useMemo((): TeamId | null => {
-    if (!room) return null
-    return room.players.find((p) => p.userId === youId)?.teamId ?? null
-  }, [room, youId])
 
   const teamA = useMemo(
     () => (room ? room.players.filter((p) => p.teamId === 'A') : []),
@@ -114,20 +115,22 @@ export function BattleArena({ battleId }: Props) {
 
   const allyPlayers = useMemo(() => {
     if (!room) return []
+    const yourTeam = room.players.find((p) => p.userId === youId)?.teamId
     if ((room.teamSize ?? 1) > 1 && yourTeam) {
       return room.players.filter((p) => p.teamId === yourTeam)
     }
     const you = room.players.find((p) => p.userId === youId)
     return you ? [you] : []
-  }, [room, youId, yourTeam])
+  }, [room, youId])
 
   const enemyPlayers = useMemo(() => {
     if (!room) return []
+    const yourTeam = room.players.find((p) => p.userId === youId)?.teamId
     if ((room.teamSize ?? 1) > 1 && yourTeam) {
       return room.players.filter((p) => p.teamId && p.teamId !== yourTeam)
     }
     return room.players.filter((p) => p.userId !== youId)
-  }, [room, youId, yourTeam])
+  }, [room, youId])
 
   const spectatorPlayers = useMemo(() => {
     if (!room) return []
@@ -144,8 +147,9 @@ export function BattleArena({ battleId }: Props) {
   if (!room || !caseDef) return null
 
   const participating = isParticipant(room, me?.id)
-  const isTeamMode = (room.teamSize ?? 1) > 1
-  const useVertical = isTeamMode || room.players.length >= 3
+  const isTeamMode =
+    (room.teamSize ?? 1) > 1 ||
+    room.players.some((p) => p.teamId === 'A' || p.teamId === 'B')
 
   const audiblePlayerId =
     allyPlayers.find((p) => p.userId === youId && !p.forfeited)?.id ??
@@ -164,22 +168,127 @@ export function BattleArena({ battleId }: Props) {
   const isLastReveal =
     room.phase === 'revealed' && room.currentRound + 1 >= room.totalRounds
 
-  const itemHeight = isTeamMode
-    ? room.teamSize >= 3
-      ? 64
-      : 72
-    : 80
+  const ffaOrdered =
+    allyPlayers.length > 0
+      ? [...allyPlayers, ...enemyPlayers]
+      : spectatorPlayers
 
-  const renderLane = (
-    player: (typeof room.players)[number],
-    side: 'ally' | 'enemy',
-  ) => {
+  const renderCinemaColumn = (player: BattlePlayer, team: TeamId) => {
     const drop = roundDrops.find((d) => d.playerId === player.id)
     const isYou = player.userId === youId
-    const lead =
-      isTeamMode && player.teamId
-        ? leadTeam === player.teamId
-        : leaderId === player.id
+    const total = liveTotals[player.id] ?? 0
+    const history = room.drops
+      .filter(
+        (d) =>
+          d.playerId === player.id &&
+          d.roundIndex < room.currentRound + (room.phase === 'revealed' ? 1 : 0),
+      )
+      .slice(-6)
+    const winnerItem: CaseItem | null = drop
+      ? {
+          id: drop.item.itemId,
+          name: drop.item.name,
+          rarity: drop.item.rarity,
+          chance: 1,
+          value: drop.item.value,
+          accent: drop.item.accent,
+          image: drop.item.image,
+        }
+      : null
+    const meta = drop ? RARITY_META[drop.item.rarity] : null
+
+    return (
+      <div
+        key={`${player.id}-${room.currentRound}`}
+        className={`battle-cinema__col battle-cinema__col--${team}${
+          isYou ? ' battle-cinema__col--you' : ''
+        }${leadTeam === team ? ' battle-cinema__col--lead' : ''}`}
+      >
+        <div className="battle-cinema__reel">
+          {player.forfeited || !winnerItem ? (
+            <div className="battle-cinema__reel-empty">
+              {player.forfeited ? 'Forfeit' : '—'}
+            </div>
+          ) : (
+            <Roulette
+              pool={caseDef.items}
+              winner={winnerItem}
+              spinning={room.phase === 'spinning'}
+              onDone={noop}
+              durationMs={BATTLE_SPIN_MS}
+              itemWidth={110}
+              itemHeight={96}
+              compact
+              audible={player.id === audiblePlayerId}
+              spinVariant="battle"
+              orientation="vertical"
+            />
+          )}
+        </div>
+
+        <div className="battle-cinema__pull">
+          {room.phase === 'revealed' && drop && meta ? (
+            <>
+              <p className="battle-cinema__pull-name" style={{ color: meta.color }}>
+                {drop.item.name}
+              </p>
+              <CrystalAmount value={drop.item.value} className="battle-cinema__pull-value" />
+            </>
+          ) : (
+            <p className="battle-cinema__pull-wait">
+              {room.phase === 'spinning' ? 'Открытие…' : '—'}
+            </p>
+          )}
+        </div>
+
+        <div className="battle-cinema__player">
+          <div className="battle-cinema__avatar" aria-hidden>
+            {playerInitial(player.name)}
+          </div>
+          <div className="battle-cinema__player-meta">
+            <strong>
+              {isYou ? 'Ты · ' : ''}
+              {player.name}
+            </strong>
+            <CrystalAmount value={total} className="battle-cinema__player-total" />
+          </div>
+        </div>
+
+        <div className="battle-cinema__history" aria-label="История дропов">
+          {Array.from({ length: 6 }).map((_, i) => {
+            const h = history[i]
+            return (
+              <div
+                key={`${player.id}-hist-${i}`}
+                className={`battle-cinema__hist${h ? ' battle-cinema__hist--filled' : ''}`}
+                style={
+                  h
+                    ? {
+                        borderColor: RARITY_META[h.item.rarity].color,
+                        background: `radial-gradient(circle, ${RARITY_META[h.item.rarity].glow}, transparent 70%)`,
+                      }
+                    : undefined
+                }
+                title={h ? `${h.item.name} · ${h.item.value}` : undefined}
+              >
+                {h?.item.image ? (
+                  <img
+                    className={`item-art--${h.item.rarity}`}
+                    src={h.item.image}
+                    alt=""
+                  />
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const renderFfaLane = (player: BattlePlayer, side: 'ally' | 'enemy') => {
+    const drop = roundDrops.find((d) => d.playerId === player.id)
+    const isYou = player.userId === youId
     const total = liveTotals[player.id] ?? 0
     if (player.forfeited || !drop) {
       return (
@@ -187,14 +296,14 @@ export function BattleArena({ battleId }: Props) {
           key={player.id}
           className={`arena-lane arena-lane--empty arena-lane--${side}${
             isYou ? ' arena-lane--you' : ''
-          }${useVertical ? ' arena-lane--v' : ''}`}
+          }`}
         >
           <header>
             <strong>
               {isYou ? 'Ты · ' : ''}
               {player.name}
             </strong>
-            <span>{player.forfeited ? 'Forfeit' : `${total} Мора`}</span>
+            <span>{player.forfeited ? 'Forfeit' : `${total} кристаллов`}</span>
           </header>
         </div>
       )
@@ -212,9 +321,9 @@ export function BattleArena({ battleId }: Props) {
     return (
       <div
         key={`${player.id}-${room.currentRound}`}
-        className={`arena-lane arena-lane--${side}${lead ? ' arena-lane--lead' : ''}${
-          isYou ? ' arena-lane--you' : ''
-        }${useVertical ? ' arena-lane--v' : ''}`}
+        className={`arena-lane arena-lane--${side}${
+          leaderId === player.id ? ' arena-lane--lead' : ''
+        }${isYou ? ' arena-lane--you' : ''}`}
       >
         <header>
           <strong>
@@ -236,12 +345,11 @@ export function BattleArena({ battleId }: Props) {
           spinning={room.phase === 'spinning'}
           onDone={noop}
           durationMs={BATTLE_SPIN_MS}
-          itemWidth={useVertical ? undefined : isTeamMode ? 108 : 120}
-          itemHeight={itemHeight}
+          itemWidth={112}
           compact
           audible={player.id === audiblePlayerId}
           spinVariant="battle"
-          orientation={useVertical ? 'vertical' : 'horizontal'}
+          orientation="horizontal"
         />
         {room.phase === 'revealed' && (
           <p className="arena-lane__reveal" style={{ color: meta.color }}>
@@ -252,26 +360,132 @@ export function BattleArena({ battleId }: Props) {
     )
   }
 
-  const leftTeam = yourTeam === 'B' ? teamB : teamA
-  const rightTeam = yourTeam === 'B' ? teamA : teamB
-  const leftTeamId: TeamId = leftTeam[0]?.teamId ?? (yourTeam === 'B' ? 'B' : 'A')
-  const rightTeamId: TeamId = rightTeam[0]?.teamId ?? (yourTeam === 'B' ? 'A' : 'B')
-  const leftLabel =
-    yourTeam != null
-      ? leftTeamId === yourTeam
-        ? 'Твоя команда'
-        : 'Соперники'
-      : `Команда ${leftTeamId}`
-  const rightLabel =
-    yourTeam != null
-      ? rightTeamId === yourTeam
-        ? 'Твоя команда'
-        : 'Соперники'
-      : `Команда ${rightTeamId}`
+  if (isTeamMode) {
+    const size = Math.max(teamA.length, teamB.length, room.teamSize || 3)
+    const padTeam = (list: BattlePlayer[]) =>
+      Array.from({ length: size }, (_, i) => list[i] ?? null)
+
+    return (
+      <div
+        className={`page battle-arena-page battle-arena-page--cinema${
+          room.phase === 'spinning' ? ' battle-arena-page--spinning' : ''
+        }`}
+      >
+        <div className="battle-cinema__bar">
+          <div className="battle-cinema__bar-cost">
+            <span>Общая стоимость</span>
+            <CrystalAmount value={room.entryFee} />
+          </div>
+          <div className="battle-cinema__bar-round">
+            Раунд {Math.min(room.currentRound + 1, room.totalRounds)} из{' '}
+            {room.totalRounds}
+            <em> · {caseDef.name}</em>
+          </div>
+          <div className="battle-cinema__bar-actions">
+            {room.phaseEndsInMs != null && (
+              <span className="form-hint">
+                {room.phase === 'spinning' ? 'открытие' : 'пауза'} ~
+                {Math.ceil(room.phaseEndsInMs / 1000)}с
+              </span>
+            )}
+            {participating && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  if (confirm('Выход = forfeit. Продолжить?')) {
+                    void forfeit(battleId)
+                  }
+                }}
+              >
+                Forfeit
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="battle-cinema__scores">
+          <div
+            className={`battle-cinema__score battle-cinema__score--A${
+              leadTeam === 'A' ? ' is-lead' : ''
+            }`}
+          >
+            <span>Team 1</span>
+            <CrystalAmount value={teamTotals?.A ?? 0} />
+          </div>
+          <div className="battle-cinema__swords" aria-hidden>
+            ✦
+          </div>
+          <div
+            className={`battle-cinema__score battle-cinema__score--B${
+              leadTeam === 'B' ? ' is-lead' : ''
+            }`}
+          >
+            <span>Team 2</span>
+            <CrystalAmount value={teamTotals?.B ?? 0} />
+          </div>
+        </div>
+
+        <div
+          className={`battle-cinema${
+            room.phase === 'spinning' ? ' battle-cinema--spinning' : ''
+          }`}
+        >
+          <div className="battle-cinema__stage">
+            <div className="battle-cinema__team battle-cinema__team--A">
+              {padTeam(teamA).map((player, i) =>
+                player ? (
+                  renderCinemaColumn(player, 'A')
+                ) : (
+                  <div
+                    key={`empty-A-${i}`}
+                    className="battle-cinema__col battle-cinema__col--empty battle-cinema__col--A"
+                  />
+                ),
+              )}
+            </div>
+
+            <div className="battle-cinema__vs" aria-hidden>
+              <span>VS</span>
+            </div>
+
+            <div className="battle-cinema__team battle-cinema__team--B">
+              {padTeam(teamB).map((player, i) =>
+                player ? (
+                  renderCinemaColumn(player, 'B')
+                ) : (
+                  <div
+                    key={`empty-B-${i}`}
+                    className="battle-cinema__col battle-cinema__col--empty battle-cinema__col--B"
+                  />
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+
+        {room.phase === 'revealed' && (
+          <div className="arena-next">
+            <p className="form-hint">
+              {isLastReveal
+                ? 'Итоги / Sudden Death подтянутся автоматически…'
+                : 'Следующий раунд автоматически…'}
+            </p>
+          </div>
+        )}
+
+        <Link to="/battles" className="back-link">
+          К списку баттлов
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div
-      className={`page battle-arena-page${isTeamMode ? ' battle-arena-page--team' : ''}`}
+      className={`page battle-arena-page${
+        room.phase === 'spinning' ? ' battle-arena-page--spinning' : ''
+      }`}
     >
       <div className="arena-top">
         <div>
@@ -279,9 +493,7 @@ export function BattleArena({ battleId }: Props) {
             {room.suddenDeath
               ? 'Sudden Death'
               : participating
-                ? isTeamMode
-                  ? `Team Battle · ${room.teamSize}v${room.teamSize}`
-                  : 'Case Battle'
+                ? 'Case Battle'
                 : 'Spectating'}
           </p>
           <h1>
@@ -311,120 +523,37 @@ export function BattleArena({ battleId }: Props) {
         )}
       </div>
 
-      {teamTotals && (
-        <div className="arena-team-score">
+      <div className="arena-scoreboard">
+        {ffaOrdered.map((p) => (
           <div
-            className={`team-score-pill${
-              leadTeam === leftTeamId ? ' team-score-pill--lead' : ''
-            }`}
+            key={p.id}
+            className={`score-pill${leaderId === p.id ? ' score-pill--lead' : ''}${
+              p.forfeited ? ' score-pill--out' : ''
+            }${p.userId === youId ? ' score-pill--you' : ''}`}
           >
-            <span>{leftLabel}</span>
+            <span>{p.userId === youId ? 'Ты' : p.name}</span>
             <strong>
-              {teamTotals[leftTeamId].toLocaleString('ru-RU')} Мора
+              {(liveTotals[p.id] ?? 0).toLocaleString('ru-RU')} кристаллов
             </strong>
           </div>
-          <span className="team-score-vs">vs</span>
-          <div
-            className={`team-score-pill${
-              leadTeam === rightTeamId ? ' team-score-pill--lead' : ''
-            }`}
-          >
-            <span>{rightLabel}</span>
-            <strong>
-              {teamTotals[rightTeamId].toLocaleString('ru-RU')} Мора
-            </strong>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {!isTeamMode && (
-        <div className="arena-scoreboard">
-          {(allyPlayers.length > 0
-            ? [...allyPlayers, ...enemyPlayers]
-            : spectatorPlayers
-          ).map((p) => (
-            <div
-              key={p.id}
-              className={`score-pill${
-                leaderId === p.id ? ' score-pill--lead' : ''
-              }${p.forfeited ? ' score-pill--out' : ''}${
-                p.userId === youId ? ' score-pill--you' : ''
-              }`}
-            >
-              <span>{p.userId === youId ? 'Ты' : p.name}</span>
-              <strong>
-                {(liveTotals[p.id] ?? 0).toLocaleString('ru-RU')} Мора
-              </strong>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {isTeamMode ? (
-        <div className="arena-vs">
-          <section className="arena-vs__col arena-vs__col--left">
-            <p className="arena-stack__label">{leftLabel}</p>
-            <div className="arena-vs__lanes">
-              {leftTeam.map((player) =>
-                renderLane(
-                  player,
-                  player.teamId === yourTeam ? 'ally' : 'enemy',
-                ),
-              )}
-            </div>
-          </section>
-          <section className="arena-vs__col arena-vs__col--right">
-            <p className="arena-stack__label">{rightLabel}</p>
-            <div className="arena-vs__lanes">
-              {rightTeam.map((player) =>
-                renderLane(
-                  player,
-                  player.teamId === yourTeam ? 'ally' : 'enemy',
-                ),
-              )}
-            </div>
-          </section>
-        </div>
-      ) : (
-        <div className="arena-stack">
-          {allyPlayers.length > 0 && (
-            <section className="arena-stack__you">
-              <div
-                className={`arena-lanes arena-lanes--${Math.min(allyPlayers.length, 3)}${
-                  useVertical ? ' arena-lanes--vertical' : ''
-                }`}
-              >
-                {allyPlayers.map((player) => renderLane(player, 'ally'))}
-              </div>
-            </section>
-          )}
-
-          {enemyPlayers.length > 0 && (
-            <section className="arena-stack__opponents">
-              <p className="arena-stack__label">Оппоненты</p>
-              <div
-                className={`arena-lanes arena-lanes--${Math.min(enemyPlayers.length, 3)}${
-                  useVertical ? ' arena-lanes--vertical' : ''
-                }`}
-              >
-                {enemyPlayers.map((player) => renderLane(player, 'enemy'))}
-              </div>
-            </section>
-          )}
-
-          {spectatorPlayers.length > 0 && (
-            <div
-              className={`arena-lanes arena-lanes--${Math.min(spectatorPlayers.length, 4)}${
-                useVertical ? ' arena-lanes--vertical' : ''
-              }`}
-            >
-              {spectatorPlayers.map((player) =>
-                renderLane(player, player.teamId === 'A' ? 'ally' : 'enemy'),
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <div
+        className={`arena-board arena-board--ffa arena-board--count-${Math.min(
+          ffaOrdered.length,
+          4,
+        )}`}
+      >
+        {ffaOrdered.map((player) =>
+          renderFfaLane(
+            player,
+            player.userId === youId || allyPlayers.some((a) => a.id === player.id)
+              ? 'ally'
+              : 'enemy',
+          ),
+        )}
+      </div>
 
       {room.phase === 'revealed' && (
         <div className="arena-next">
@@ -457,7 +586,7 @@ export function BattleArena({ battleId }: Props) {
                   <span style={{ color: RARITY_META[d.item.rarity].color }}>
                     {d.item.name}
                   </span>
-                  <strong>{d.item.value} Мора</strong>
+                  <strong>{d.item.value} кристаллов</strong>
                 </li>
               )
             })}

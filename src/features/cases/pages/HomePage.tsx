@@ -31,8 +31,8 @@ export function HomePage() {
             <p className="home-hero__brand">Celestia Wish</p>
             <h1 className="home-hero__title">Сделай желание. Поймай 5★.</h1>
             <p className="home-hero__lead">
-              Элементальные баннеры Тейвата: соло-открытие или Case Battle.
-              Побеждает высшая сумма дропа.
+              Элементы, мечи, персонажи, щиты, экипировка и питомцы — соло или
+              Case Battle. Чем выше рарность, тем ярче дроп.
             </p>
             <div className="home-hero__actions">
               <Link to="/upgrade" className="btn btn--primary">

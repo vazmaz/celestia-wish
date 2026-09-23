@@ -10,6 +10,7 @@ import {
 import {
   canStart,
   fillWithBots,
+  isLobbyFull,
   makeBot,
   makeUserPlayer,
   applyForfeit,
@@ -30,6 +31,133 @@ import {
   type BattlePlayer,
   type BotLuck,
 } from '../battles/types.js'
+import type { BattleRoom } from '@prisma/client'
+
+type StartBattleResult =
+  | { ok: true; room: BattleRoom }
+  | { ok: false; error: string; status: number }
+
+/**
+ * Start a lobby battle: charge humans, roll drops, set spinning.
+ * When `requireReady` is false (auto-start on full lobby), ready flags are ignored.
+ */
+async function startBattleRoom(
+  room: BattleRoom,
+  options: { fillBots: boolean; requireReady: boolean },
+): Promise<StartBattleResult> {
+  if (room.status !== 'lobby') {
+    return { ok: false, error: 'Лобби недоступно', status: 400 }
+  }
+
+  let players = parsePlayers(room.players)
+  const teamSize = room.teamSize ?? 1
+
+  if (options.fillBots && players.length < room.maxPlayers) {
+    players = fillWithBots(players, room.maxPlayers, teamSize)
+  }
+
+  if (options.requireReady) {
+    if (!canStart(players, room.maxPlayers)) {
+      return {
+        ok: false,
+        error:
+          teamSize > 1
+            ? 'Нужны полные команды и все Ready (или включи добивку ботами)'
+            : 'Нужны ≥2 игрока и все Ready',
+        status: 400,
+      }
+    }
+  } else if (!isLobbyFull(players, room.maxPlayers, teamSize)) {
+    return { ok: false, error: 'Лобби ещё не заполнено', status: 400 }
+  }
+
+  const caseIds = parseCaseIds(room.caseIds)
+  const fee = room.entryFee
+  const humanIds = players
+    .filter((p) => p.kind === 'user' && p.userId)
+    .map((p) => p.userId!)
+
+  try {
+    const started = await prisma.$transaction(async (tx) => {
+      const fresh = await tx.battleRoom.findUnique({ where: { id: room.id } })
+      if (!fresh || fresh.status !== 'lobby') {
+        throw new Error('NOT_LOBBY')
+      }
+
+      const users = await tx.user.findMany({
+        where: { id: { in: humanIds } },
+      })
+      if (users.length !== humanIds.length) {
+        throw new Error('PLAYER_MISSING')
+      }
+      for (const u of users) {
+        if (u.balance < fee) throw new Error(`FUNDS:${u.username}`)
+      }
+
+      for (const u of users) {
+        await tx.user.update({
+          where: { id: u.id },
+          data: { balance: u.balance - fee },
+        })
+      }
+
+      players = players.map((p) =>
+        p.kind === 'user' ? { ...p, entryPaid: true, ready: true } : p,
+      )
+
+      const { drops, totalRounds } = startDrops({
+        seed: room.seed,
+        caseIds,
+        players,
+      })
+
+      return tx.battleRoom.update({
+        where: { id: room.id },
+        data: {
+          status: 'running',
+          phase: 'spinning',
+          phaseStartedAt: new Date(),
+          players,
+          drops,
+          currentRound: 0,
+          totalRounds,
+          suddenDeath: false,
+          winnerId: null,
+          winnerTeamId: null,
+        },
+      })
+    })
+
+    return { ok: true, room: started }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.startsWith('FUNDS:')) {
+      return {
+        ok: false,
+        error: `У игрока ${msg.slice(6)} недостаточно средств`,
+        status: 400,
+      }
+    }
+    if (msg === 'PLAYER_MISSING') {
+      return { ok: false, error: 'Игрок не найден', status: 400 }
+    }
+    if (msg === 'NOT_LOBBY') {
+      return { ok: false, error: 'Лобби недоступно', status: 400 }
+    }
+    throw err
+  }
+}
+
+async function autoStartIfFull(room: BattleRoom): Promise<BattleRoom> {
+  const players = parsePlayers(room.players)
+  const teamSize = room.teamSize ?? 1
+  if (!isLobbyFull(players, room.maxPlayers, teamSize)) return room
+  const result = await startBattleRoom(room, {
+    fillBots: false,
+    requireReady: false,
+  })
+  return result.ok ? result.room : room
+}
 
 const createSchema = z.object({
   format: z
@@ -240,7 +368,15 @@ battlesRouter.post('/:id/join', async (req, res) => {
     data: { players: nextPlayers },
   })
 
-  res.json({ room: toPublicRoom(room), role: 'player' })
+  room = await autoStartIfFull(room)
+
+  res.json({
+    room: toPublicRoom(
+      room,
+      room.status === 'running' && room.phase === 'spinning' ? SPIN_MS : null,
+    ),
+    role: 'player',
+  })
 })
 
 battlesRouter.post('/:id/leave', async (req, res) => {
@@ -356,11 +492,19 @@ battlesRouter.post('/:id/bots', async (req, res) => {
     parsed.data.luck as BotLuck | undefined,
     teamId,
   )
-  const updated = await prisma.battleRoom.update({
+  let updated = await prisma.battleRoom.update({
     where: { id },
     data: { players: [...players, bot] },
   })
-  res.json({ room: toPublicRoom(updated) })
+  updated = await autoStartIfFull(updated)
+  res.json({
+    room: toPublicRoom(
+      updated,
+      updated.status === 'running' && updated.phase === 'spinning'
+        ? SPIN_MS
+        : null,
+    ),
+  })
 })
 
 battlesRouter.post('/:id/start', async (req, res) => {
@@ -375,93 +519,20 @@ battlesRouter.post('/:id/start', async (req, res) => {
     return
   }
 
-  let players = parsePlayers(room.players)
-  const teamSize = room.teamSize ?? 1
-  if (room.fillBots && players.length < room.maxPlayers) {
-    players = fillWithBots(players, room.maxPlayers, teamSize)
-  }
-
-  if (!canStart(players, room.maxPlayers)) {
-    res.status(400).json({
-      error:
-        teamSize > 1
-          ? 'Нужны полные команды и все Ready (или включи добивку ботами)'
-          : 'Нужны ≥2 игрока и все Ready',
-    })
+  const result = await startBattleRoom(room, {
+    fillBots: room.fillBots,
+    requireReady: true,
+  })
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error })
     return
   }
 
-  const caseIds = parseCaseIds(room.caseIds)
-  const fee = room.entryFee
-  const humanIds = players
-    .filter((p) => p.kind === 'user' && p.userId)
-    .map((p) => p.userId!)
-
-  try {
-    const started = await prisma.$transaction(async (tx) => {
-      const users = await tx.user.findMany({
-        where: { id: { in: humanIds } },
-      })
-      if (users.length !== humanIds.length) {
-        throw new Error('PLAYER_MISSING')
-      }
-      for (const u of users) {
-        if (u.balance < fee) throw new Error(`FUNDS:${u.username}`)
-      }
-
-      for (const u of users) {
-        await tx.user.update({
-          where: { id: u.id },
-          data: { balance: u.balance - fee },
-        })
-      }
-
-      players = players.map((p) =>
-        p.kind === 'user' ? { ...p, entryPaid: true, ready: true } : p,
-      )
-
-      const { drops, totalRounds } = startDrops({
-        seed: room.seed,
-        caseIds,
-        players,
-      })
-
-      return tx.battleRoom.update({
-        where: { id: room.id },
-        data: {
-          status: 'running',
-          phase: 'spinning',
-          phaseStartedAt: new Date(),
-          players,
-          drops,
-          currentRound: 0,
-          totalRounds,
-          suddenDeath: false,
-          winnerId: null,
-          winnerTeamId: null,
-        },
-      })
-    })
-
-    const me = await prisma.user.findUnique({ where: { id: req.auth!.sub } })
-    res.json({
-      room: toPublicRoom(started, SPIN_MS),
-      user: me ? toPublicUser(me) : undefined,
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : ''
-    if (msg.startsWith('FUNDS:')) {
-      res.status(400).json({
-        error: `У игрока ${msg.slice(6)} недостаточно средств`,
-      })
-      return
-    }
-    if (msg === 'PLAYER_MISSING') {
-      res.status(400).json({ error: 'Игрок не найден' })
-      return
-    }
-    throw err
-  }
+  const me = await prisma.user.findUnique({ where: { id: req.auth!.sub } })
+  res.json({
+    room: toPublicRoom(result.room, SPIN_MS),
+    user: me ? toPublicUser(me) : undefined,
+  })
 })
 
 battlesRouter.post('/:id/forfeit', async (req, res) => {

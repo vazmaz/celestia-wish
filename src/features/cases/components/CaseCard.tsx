@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
+import type { CSSProperties } from 'react'
 import { RARITY_ORDER } from '../data/rarities'
 import type { CaseDef } from '../../../shared/types'
 import { RarityBadge } from '../../../shared/components/item/RarityBadge'
-import { MoraAmount } from '../../../shared/components/brand/MoraAmount'
+import { CrystalAmount } from '../../../shared/components/brand/CrystalAmount'
 
 interface Props {
   caseDef: CaseDef
@@ -17,7 +18,11 @@ export function CaseCard({ caseDef }: Props) {
     .slice(0, 4)
 
   return (
-    <Link to={`/case/${caseDef.id}`} className="case-card">
+    <Link
+      to={`/case/${caseDef.id}`}
+      className="case-card"
+      style={{ '--case-theme': caseDef.theme } as CSSProperties}
+    >
       <div className="case-card__art" aria-hidden>
         <img
           className="case-card__image"
@@ -25,13 +30,15 @@ export function CaseCard({ caseDef }: Props) {
           alt=""
           loading="lazy"
         />
+        <div className="case-card__frame" />
         <div className="case-card__art-fade" />
+        <span className="case-card__wish-tag">Wish</span>
       </div>
 
       <div className="case-card__body">
         <div className="case-card__top">
           <h2 className="case-card__title">{caseDef.name}</h2>
-          <MoraAmount
+          <CrystalAmount
             className="case-card__price"
             value={caseDef.price}
           />
@@ -41,7 +48,7 @@ export function CaseCard({ caseDef }: Props) {
           {preview.map((item) => (
             <div
               key={item.id}
-              className="case-card__chip"
+              className={`case-card__chip case-card__chip--${item.rarity}`}
               style={{ borderColor: item.accent }}
               title={item.name}
             >

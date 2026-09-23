@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { ItemTile } from '../../../shared/components/item/ItemTile'
-import { MoraAmount } from '../../../shared/components/brand/MoraAmount'
+import { CrystalAmount } from '../../../shared/components/brand/CrystalAmount'
 import { RARITY_META, RARITY_ORDER } from '../../cases/data/rarities'
 import { usePlayerStore } from '../store/playerStore'
 import type { Rarity } from '../../../shared/types'
@@ -50,7 +50,7 @@ export function InventoryPage() {
                 ? `${inventory.length} предметов · `
                 : `${visible.length} из ${inventory.length} · `}
             {inventory.length > 0 && (
-              <MoraAmount value={filter === 'all' ? totalValue : visibleValue} />
+              <CrystalAmount value={filter === 'all' ? totalValue : visibleValue} />
             )}
           </p>
         </div>
@@ -138,7 +138,7 @@ export function InventoryPage() {
                 className="btn btn--ghost btn--block"
                 onClick={() => sellItem(item.uid)}
               >
-                Продать · <MoraAmount value={item.value} />
+                Продать · <CrystalAmount value={item.value} />
               </button>
             </div>
           ))}

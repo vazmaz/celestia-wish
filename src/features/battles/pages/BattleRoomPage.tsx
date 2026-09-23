@@ -122,7 +122,7 @@ export function BattleRoomPage() {
           <div>
             <h1>Лобби баттла</h1>
             <p>
-              {formatLabel(room)} · Highest · вход {fee} Мора · код{' '}
+              {formatLabel(room)} · Highest · вход {fee} кристаллов · код{' '}
               <strong className="invite-code">{room.inviteCode}</strong>
               {isSpectator ? ' · просмотр' : ''}
             </p>
@@ -146,7 +146,7 @@ export function BattleRoomPage() {
                 {c?.image && <img className="mini-case__img" src={c.image} alt="" />}
                 <span>R{i + 1}</span>
                 <strong>{c?.name ?? id}</strong>
-                <em>{c?.price ?? 0} Мора</em>
+                <em>{c?.price ?? 0} кристаллов</em>
               </div>
             )
           })}
@@ -303,7 +303,7 @@ export function BattleRoomPage() {
                 })()
               }}
             >
-              Присоединиться · {fee} Мора
+              Присоединиться · {fee} кристаллов
             </button>
           )}
           {isHost && (
@@ -319,12 +319,20 @@ export function BattleRoomPage() {
                 })()
               }}
             >
-              Start · {fee} Мора с каждого
+              {room.fillBots && room.players.length < room.maxPlayers
+                ? `Start с ботами · ${fee} кристаллов`
+                : `Start · ${fee} кристаллов с каждого`}
             </button>
           )}
         </div>
-        {!readyOk && !isSpectator && (
-          <p className="form-hint">Нужны ≥2 игрока и все Ready.</p>
+        <p className="form-hint">
+          Баттл стартует сам, когда заняты все слоты (
+          {room.players.length}/{room.maxPlayers}).
+        </p>
+        {!readyOk && !isSpectator && room.players.length < room.maxPlayers && (
+          <p className="form-hint">
+            До старта вручную нужны ≥2 игрока и все Ready.
+          </p>
         )}
         {isHost && balance < fee && (
           <p className="form-error">Не хватает баланса на вход.</p>

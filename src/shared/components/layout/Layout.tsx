@@ -53,7 +53,7 @@ export function Layout() {
       <footer className="site-footer">
         <p>
           Celestia Wish — неофициальный фан-проект в тематике Genshin Impact · не аффилирован с
-          Hoyoverse · виртуальная Мора, без реальных платежей
+          Hoyoverse · виртуальные кристаллы, без реальных платежей
         </p>
       </footer>
       <LiveChat />

@@ -35,7 +35,7 @@ export const SUPPORT_CATEGORIES: {
   id: SupportCategory
   label: string
 }[] = [
-  { id: 'balance', label: 'Баланс / Мора' },
+  { id: 'balance', label: 'Баланс / Кристаллы' },
   { id: 'battle', label: 'Баттлы' },
   { id: 'upgrade', label: 'Апгрейд' },
   { id: 'account', label: 'Аккаунт' },

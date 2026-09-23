@@ -1,6 +1,15 @@
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
-export type ElementId = 'anemo' | 'pyro' | 'hydro' | 'electro' | 'cryo' | 'dendro'
+export type BannerCategoryId =
+  | 'elements'
+  | 'swords'
+  | 'characters'
+  | 'shields'
+  | 'equipment'
+  | 'pets'
+
+/** @deprecated Use BannerCategoryId */
+export type ElementId = BannerCategoryId
 
 export interface CaseItem {
   id: string
@@ -21,7 +30,7 @@ export interface CaseDef {
   description: string
   price: number
   theme: string
-  element: ElementId
+  category: BannerCategoryId
   /** Banner cover art */
   image: string
   items: CaseItem[]

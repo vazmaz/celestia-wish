@@ -12,7 +12,7 @@ import {
   useSupportStore,
 } from '../../../features/support/store/supportStore'
 import { CelestiaMascot } from '../brand/CelestiaMascot'
-import { MoraCoin } from '../brand/MoraCoin'
+import { CrystalIcon } from '../brand/CrystalIcon'
 
 const NAV = [
   { to: '/', label: 'Баннеры', end: true },
@@ -103,7 +103,7 @@ export function Header() {
           {muted ? <SpeakerOffIcon /> : <SpeakerIcon />}
         </button>
         <div className="balance-chip">
-        <MoraCoin className="balance-chip__coin" />
+        <CrystalIcon className="balance-chip__coin" />
         <div>
           {user && (
             <span className="balance-chip__label">@{user.username}</span>

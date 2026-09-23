@@ -117,7 +117,7 @@ topupsRouter.post('/', async (req, res) => {
       const returnUrl = `${await appReturnBaseUrl()}/?topup=${encodeURIComponent(topup.id)}`
       const payment = await createYooPayment({
         amountRub: amount,
-        description: `Пополнение баланса: ${amount} Мора`,
+        description: `Пополнение баланса: ${amount} кристаллов`,
         returnUrl,
         metadata: {
           topupId: topup.id,

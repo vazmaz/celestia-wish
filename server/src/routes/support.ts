@@ -141,7 +141,7 @@ supportRouter.post('/tickets/demo', adminRequired, async (req, res) => {
       userId: admin.id,
       username: 'demo_client',
       category: 'balance',
-      subject: 'Не пришла Мора после апгрейда',
+      subject: 'Не пришли кристаллы после апгрейда',
       status: 'open',
       messages: {
         create: [

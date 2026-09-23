@@ -83,6 +83,21 @@ export function canStart(players: BattlePlayer[], maxPlayers: number): boolean {
   return players.every((p) => p.ready)
 }
 
+/** Room is full (all seats / both teams). Ready state is ignored. */
+export function isLobbyFull(
+  players: BattlePlayer[],
+  maxPlayers: number,
+  teamSize: number,
+): boolean {
+  if (players.length < maxPlayers) return false
+  if (teamSize > 1) {
+    const countA = players.filter((p) => p.teamId === 'A').length
+    const countB = players.filter((p) => p.teamId === 'B').length
+    return countA >= teamSize && countB >= teamSize
+  }
+  return true
+}
+
 export function fillWithBots(
   players: BattlePlayer[],
   maxPlayers: number,
