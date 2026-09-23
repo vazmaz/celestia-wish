@@ -333,8 +333,8 @@ battlesRouter.post('/:id/bots', async (req, res) => {
     res.status(400).json({ error: 'Лобби недоступно' })
     return
   }
-  if (room.hostUserId !== req.auth!.sub) {
-    res.status(403).json({ error: 'Только хост может добавлять ботов' })
+  if (room.hostUserId !== req.auth!.sub && req.auth!.role !== 'admin') {
+    res.status(403).json({ error: 'Только хост или админ может добавлять ботов' })
     return
   }
 

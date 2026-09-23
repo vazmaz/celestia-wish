@@ -133,8 +133,7 @@ export function BattleResult({ battleId, onRematch }: Props) {
                   {p.teamId ? ` · ${p.teamId}` : ''}
                 </strong>
                 <p>
-                  {p.kind}
-                  {p.forfeited ? ' · forfeit' : ''}
+                  {p.forfeited ? 'forfeit' : p.kind === 'bot' && p.luck ? p.luck : '\u00a0'}
                 </p>
               </div>
               <strong className="result-row__total">

@@ -2119,6 +2119,18 @@ button.lobby-card {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+  align-items: center;
+}
+
+.battle-lobby__admin-tag {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 176, 32, 0.35);
+  color: var(--accent-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .battle-lobby__cta {

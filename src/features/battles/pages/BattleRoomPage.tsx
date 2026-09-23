@@ -107,6 +107,8 @@ export function BattleRoomPage() {
   const readyOk = canStart(room)
   const you = youPlayer(room, me?.id)
   const isHost = room.hostUserId === me?.id
+  const isAdmin = me?.role === 'admin'
+  const canAddBots = isHost || isAdmin
   const isSpectator = !you
 
   return (
@@ -179,9 +181,16 @@ export function BattleRoomPage() {
                           <div className="player-slot__top">
                             <strong>{player.name}</strong>
                             <span className="player-slot__kind">
-                              {player.kind}
-                              {player.luck ? ` · ${player.luck}` : ''}
-                              {player.userId === room.hostUserId ? ' · host' : ''}
+                              {[
+                                player.kind === 'bot' && player.luck
+                                  ? player.luck
+                                  : null,
+                                player.userId === room.hostUserId
+                                  ? 'host'
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
                             </span>
                           </div>
                           <p className={player.ready ? 'ready-on' : 'ready-off'}>
@@ -215,9 +224,14 @@ export function BattleRoomPage() {
                   <div className="player-slot__top">
                     <strong>{player.name}</strong>
                     <span className="player-slot__kind">
-                      {player.kind}
-                      {player.luck ? ` · ${player.luck}` : ''}
-                      {player.userId === room.hostUserId ? ' · host' : ''}
+                      {[
+                        player.kind === 'bot' && player.luck
+                          ? player.luck
+                          : null,
+                        player.userId === room.hostUserId ? 'host' : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
                   </div>
                   <p className={player.ready ? 'ready-on' : 'ready-off'}>
@@ -229,8 +243,11 @@ export function BattleRoomPage() {
           </div>
         )}
 
-        {isHost && (
+        {canAddBots && (
           <div className="battle-lobby__tools">
+            {isAdmin && !isHost && (
+              <span className="form-hint battle-lobby__admin-tag">Админ</span>
+            )}
             <button
               type="button"
               className="btn btn--ghost"
