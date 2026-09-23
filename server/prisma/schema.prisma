@@ -19,15 +19,30 @@ enum TopupStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  role         Role     @default(user)
-  balance      Int      @default(10000)
-  inventory    Json     @default("[]")
-  createdAt    DateTime @default(now())
-  topups       Topup[]
-  tickets      SupportTicket[]
+  id              String        @id @default(cuid())
+  username        String        @unique
+  passwordHash    String
+  role            Role          @default(user)
+  balance         Int           @default(10000)
+  inventory       Json          @default("[]")
+  chatMutedUntil  DateTime?
+  chatMuteReason  String?
+  createdAt       DateTime      @default(now())
+  topups          Topup[]
+  tickets         SupportTicket[]
+  chatMessages    ChatMessage[]
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username   String
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model Topup {

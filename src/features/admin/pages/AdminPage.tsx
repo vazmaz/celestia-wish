@@ -5,13 +5,14 @@ import { useAuthStore, selectSessionUser } from '../../auth/store/authStore'
 import { STARTING_BALANCE, type UserAccount } from '../../auth/types'
 import { AdminSupportPanel } from '../../support/components/AdminSupportPanel'
 import { AdminPaymentsPanel } from '../components/AdminPaymentsPanel'
+import { AdminChatPanel } from '../components/AdminChatPanel'
 import {
   selectOpenTicketCount,
   useSupportStore,
 } from '../../support/store/supportStore'
 import type { Rarity } from '../../../shared/types'
 
-type AdminTab = 'users' | 'support' | 'payments'
+type AdminTab = 'users' | 'support' | 'payments' | 'chat'
 
 function inventoryStats(user: UserAccount) {
   const byRarity = RARITY_ORDER.reduce(
@@ -116,7 +117,7 @@ export function AdminPage() {
         <div>
           <h1>Админка</h1>
           <p>
-            Пользователи, балансы, ЮKassa и поддержка. Вы вошли как{' '}
+            Пользователи, балансы, ЮKassa, поддержка и чат. Вы вошли как{' '}
             <strong>{me?.username}</strong>.
           </p>
           <p className="form-hint admin-local-hint">
@@ -163,10 +164,20 @@ export function AdminPage() {
         >
           ЮKassa
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'chat'}
+          className={`admin-tab${tab === 'chat' ? ' is-active' : ''}`}
+          onClick={() => setTab('chat')}
+        >
+          Чат
+        </button>
       </div>
 
       {tab === 'support' && <AdminSupportPanel />}
       {tab === 'payments' && <AdminPaymentsPanel />}
+      {tab === 'chat' && <AdminChatPanel />}
 
       {tab === 'users' && (
         <>

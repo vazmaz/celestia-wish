@@ -10,6 +10,8 @@ export interface UserAccount {
   balance: number
   inventory: InventoryItem[]
   createdAt: number
+  chatMutedUntil?: number | null
+  chatMuteReason?: string | null
 }
 
 export const STARTING_BALANCE = 10_000

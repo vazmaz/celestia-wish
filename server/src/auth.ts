@@ -14,6 +14,8 @@ export type PublicUser = {
   balance: number
   inventory: unknown
   createdAt: number
+  chatMutedUntil: number | null
+  chatMuteReason: string | null
 }
 
 export function toPublicUser(user: User): PublicUser {
@@ -24,6 +26,8 @@ export function toPublicUser(user: User): PublicUser {
     balance: user.balance,
     inventory: user.inventory,
     createdAt: user.createdAt.getTime(),
+    chatMutedUntil: user.chatMutedUntil?.getTime() ?? null,
+    chatMuteReason: user.chatMuteReason ?? null,
   }
 }
 
