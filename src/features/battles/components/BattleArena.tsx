@@ -1,12 +1,13 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getCaseById } from '../../cases/data/cases'
 import { Roulette } from '../../../shared/components/opening/Roulette'
-import { RARITY_META } from '../../cases/data/rarities'
+import { RARITY_META, RARITY_ORDER } from '../../cases/data/rarities'
+import { sfx } from '../../../shared/lib/sfx'
 import { dropsForRound } from '../services/battleRoom'
 import { sumPlayerTotals } from '../services/roundResolver'
 import { useBattleStore } from '../store/battleStore'
-import type { CaseItem } from '../../../shared/types'
+import type { CaseItem, Rarity } from '../../../shared/types'
 
 const BATTLE_SPIN_MS = 3800
 
@@ -55,6 +56,29 @@ export function BattleArena({ battleId }: Props) {
     return id
   }, [liveTotals, room])
 
+  const heardSpin = useRef(false)
+  useEffect(() => {
+    if (!room) return
+    if (room.phase === 'spinning') {
+      heardSpin.current = true
+      return
+    }
+    if (room.phase !== 'revealed' || !heardSpin.current) return
+    heardSpin.current = false
+    const drops = dropsForRound(room, room.currentRound)
+    const you = room.players.find((p) => p.kind === 'local' && !p.forfeited)
+    const yours = you ? drops.find((d) => d.playerId === you.id) : undefined
+    const rarity =
+      yours?.item.rarity ??
+      drops.reduce<Rarity | null>((best, drop) => {
+        if (!best) return drop.item.rarity
+        return RARITY_ORDER.indexOf(drop.item.rarity) > RARITY_ORDER.indexOf(best)
+          ? drop.item.rarity
+          : best
+      }, null)
+    if (rarity) sfx.reveal(rarity)
+  }, [room])
+
   // One shared clock so all lanes reveal together (sync show).
   useEffect(() => {
     if (!room || room.phase !== 'spinning') return
@@ -65,6 +89,8 @@ export function BattleArena({ battleId }: Props) {
   }, [room?.phase, room?.currentRound, battleId, markRoundRevealed, room])
 
   if (!room || !caseDef) return null
+
+  const audiblePlayerId = room.players.find((p) => !p.forfeited)?.id
 
   const log = room.drops
     .filter((d) =>
@@ -159,6 +185,8 @@ export function BattleArena({ battleId }: Props) {
                 durationMs={BATTLE_SPIN_MS}
                 itemWidth={104}
                 compact
+                audible={player.id === audiblePlayerId}
+                spinVariant="battle"
               />
               {room.phase === 'revealed' && (
                 <p className="arena-lane__reveal" style={{ color: meta.color }}>
@@ -175,7 +203,10 @@ export function BattleArena({ battleId }: Props) {
           <button
             type="button"
             className="btn btn--primary btn--xl"
-            onClick={() => continueBattle(battleId)}
+            onClick={() => {
+              sfx.unlock()
+              continueBattle(battleId)
+            }}
           >
             {isLastReveal ? 'Итоги / Sudden Death' : 'Следующий раунд'}
           </button>

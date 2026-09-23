@@ -5,6 +5,7 @@ import { usePlayerStore } from '../../inventory/store/playerStore'
 import { canStart, entryFeeFor } from '../services/battleRoom'
 import { useBattleStore } from '../store/battleStore'
 import type { BotLuck } from '../types'
+import { sfx } from '../../../shared/lib/sfx'
 import { BattleArena } from '../components/BattleArena'
 import { BattleResult } from '../components/BattleResult'
 
@@ -173,6 +174,7 @@ export function BattleRoomPage() {
             className="btn btn--primary btn--xl"
             disabled={!readyOk || balance < fee}
             onClick={() => {
+              sfx.unlock()
               const result = startBattle(room.id)
               if (!result.ok) setError(result.reason)
             }}

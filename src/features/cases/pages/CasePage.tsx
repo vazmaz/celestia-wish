@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { CaseContents } from '../components/CaseContents'
 import { ResultModal } from '../../../shared/components/opening/ResultModal'
 import { Roulette } from '../../../shared/components/opening/Roulette'
+import { sfx } from '../../../shared/lib/sfx'
 import { getCaseById } from '../data/cases'
 import { usePlayerStore } from '../../inventory/store/playerStore'
 import type { CaseItem } from '../../../shared/types'
@@ -41,11 +42,14 @@ export function CasePage() {
 
     setWinner(result.dropped)
     setPhase('spinning')
+    sfx.unlock()
+    sfx.caseOpen()
   }, [caseDef, phase, openCase, clearLastDrop])
 
   const handleSpinDone = useCallback(() => {
     setPhase('result')
-  }, [])
+    if (winner) sfx.reveal(winner.rarity)
+  }, [winner])
 
   const handleCloseResult = useCallback(() => {
     setPhase('idle')

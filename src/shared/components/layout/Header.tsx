@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { NavLink } from 'react-router-dom'
 import { usePlayerStore } from '../../../features/inventory/store/playerStore'
 import {
@@ -6,6 +6,7 @@ import {
   useAuthStore,
 } from '../../../features/auth/store/authStore'
 import { TopupModal } from '../../../features/auth/components/TopupModal'
+import { getSfxMuted, setSfxMuted, sfx, subscribeSfx } from '../../lib/sfx'
 import {
   selectOpenTicketCount,
   useSupportStore,
@@ -25,6 +26,7 @@ export function Header() {
   const logout = useAuthStore((s) => s.logout)
   const openTickets = useSupportStore(selectOpenTicketCount)
   const [topupOpen, setTopupOpen] = useState(false)
+  const muted = useSyncExternalStore(subscribeSfx, getSfxMuted, getSfxMuted)
 
   return (
     <header className="site-header">
@@ -64,7 +66,22 @@ export function Header() {
         )}
       </nav>
 
-      <div className="balance-chip">
+      <div className="header-tools">
+        <button
+          type="button"
+          className={`sfx-toggle${muted ? ' is-muted' : ''}`}
+          aria-pressed={!muted}
+          aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+          title={muted ? 'Включить звук' : 'Выключить звук'}
+          onClick={() => {
+            const next = !muted
+            setSfxMuted(next)
+            if (!next) sfx.blip()
+          }}
+        >
+          {muted ? <SpeakerOffIcon /> : <SpeakerIcon />}
+        </button>
+        <div className="balance-chip">
         <div>
           <span className="balance-chip__label">
             {user ? `@${user.username}` : 'Мора'}
@@ -87,9 +104,32 @@ export function Header() {
         >
           Выйти
         </button>
+        </div>
       </div>
 
       <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
     </header>
+  )
+}
+
+function SpeakerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M4 9h3.2L12 5.2v13.6L7.2 15H4V9zm11.1 3a3.2 3.2 0 0 0-1.6-2.77v5.54A3.2 3.2 0 0 0 15.1 12zm0-6.4v1.7a6 6 0 0 1 0 9.4v1.7a7.7 7.7 0 0 0 0-12.8z"
+      />
+    </svg>
+  )
+}
+
+function SpeakerOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M4 9h3.2L12 5.2v13.6L7.2 15H4V9zm14.1 3 2.2-2.2-1.2-1.2L16.9 10.8 14.7 8.6l-1.2 1.2 2.2 2.2-2.2 2.2 1.2 1.2 2.2-2.2 2.2 2.2 1.2-1.2-2.2-2.2z"
+      />
+    </svg>
   )
 }

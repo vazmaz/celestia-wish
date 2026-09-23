@@ -172,6 +172,38 @@ p {
   font-size: 0.72rem;
 }
 
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sfx-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-2);
+  cursor: pointer;
+}
+
+.sfx-toggle svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.sfx-toggle.is-muted {
+  color: var(--muted);
+}
+
+.sfx-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .balance-chip {
   display: flex;
   align-items: center;
@@ -983,7 +1015,7 @@ p {
     padding: 0.45rem 0.4rem;
   }
 
-  .balance-chip {
+  .header-tools {
     margin-left: auto;
   }
 

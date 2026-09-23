@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { RARITY_META } from '../../cases/data/rarities'
+import { sfx } from '../../../shared/lib/sfx'
 import { sumPlayerTotals } from '../services/roundResolver'
 import { useBattleStore } from '../store/battleStore'
 
@@ -11,6 +13,16 @@ interface Props {
 
 export function BattleResult({ battleId, onRematch }: Props) {
   const room = useBattleStore((s) => s.rooms[battleId])
+  const youWon = room?.winnerId === 'local-you'
+  const playedOutcome = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!room || room.status !== 'finished') return
+    if (playedOutcome.current === battleId) return
+    playedOutcome.current = battleId
+    sfx.battleOutcome(youWon)
+  }, [battleId, room, youWon])
+
   if (!room) return null
 
   const totals = sumPlayerTotals(room.drops, room.players)
@@ -19,8 +31,6 @@ export function BattleResult({ battleId, onRematch }: Props) {
   )
   const winner = ranked.find((p) => p.id === room.winnerId) ?? ranked[0]
   const poolValue = room.drops.reduce((s, d) => s + d.item.value, 0)
-  const youWon = room.winnerId === 'local-you'
-
   return (
     <div className="page battle-result-page">
       <motion.section
