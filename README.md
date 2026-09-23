@@ -94,11 +94,14 @@ public/         — картинки кейсов/предметов
 | GET | `/api/topups/:id` | Статус + sync с ЮKassa после return |
 | POST | `/api/topups/:id/confirm-demo` | Демо-оплата (только без ключей ЮKassa) |
 | POST | `/api/payments/webhook` | HTTP-уведомления ЮKassa → `paid` + баланс |
-| GET/PATCH | `/api/admin/users…` | Админка |
-| GET | `/api/support/tickets` | Свои обращения; админ видит все |
-| POST | `/api/support/tickets` | Новое обращение |
-| POST | `/api/support/tickets/:id/messages` | Ответ в обращении |
-| PATCH | `/api/support/tickets/:id` | Статус (только админ) |
+| GET/PATCH | `/api/support/tickets…` | Поддержка |
+| GET/POST | `/api/chat/…` | Живой чат |
+| GET | `/api/battles/feed` | Публичные лобби + live-матчи |
+| POST | `/api/battles` | Создать баттл |
+| POST | `/api/battles/:id/join` | Войти в лобби / spectate |
+| POST | `/api/battles/:id/ready` | Ready |
+| POST | `/api/battles/:id/start` | Старт (хост; вход с каждого) |
+| GET | `/api/battles/:id` | Состояние комнаты (auto-раунды) |
 
 ## Где менять данные игры
 

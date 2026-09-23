@@ -1,6 +1,5 @@
 import type { Rarity } from '../../shared/types'
 
-/** Victory modes — only Highest is implemented in MVP. */
 export const BattleMode = {
   Highest: 'highest',
   Lowest: 'lowest',
@@ -12,19 +11,21 @@ export type BattleMode = (typeof BattleMode)[keyof typeof BattleMode]
 export type BattlePrivacy = 'public' | 'private'
 export type BattleStatus = 'lobby' | 'running' | 'finished' | 'cancelled'
 export type BattlePhase = 'idle' | 'spinning' | 'revealed'
-export type PlayerKind = 'local' | 'bot' | 'hotseat'
+export type PlayerKind = 'user' | 'bot'
 export type BotLuck = 'cold' | 'neutral' | 'hot'
+export type TeamId = 'A' | 'B'
+export type BattleFormat = 'ffa2' | 'ffa3' | 'ffa4' | '2v2' | '3v3'
 
 export interface BattlePlayer {
   id: string
+  userId: string | null
   name: string
   kind: PlayerKind
   ready: boolean
   forfeited: boolean
-  /** Demo-only bot bias; local/hotseat always fair. */
   luck?: BotLuck
-  /** Reserved for future team modes (2v2). */
-  teamId?: string | null
+  entryPaid: boolean
+  teamId: TeamId | null
 }
 
 export interface DropSnapshot {
@@ -45,45 +46,44 @@ export interface RoundDrop {
   isSuddenDeath: boolean
 }
 
-export interface BattleConfig {
-  maxPlayers: 2 | 3 | 4
-  caseIds: string[]
-  privacy: BattlePrivacy
-  mode: BattleMode
-}
-
 export interface BattleRoomState {
   id: string
   inviteCode: string
-  hostId: string
-  config: BattleConfig
-  seed: string
+  hostUserId: string
+  privacy: BattlePrivacy
   status: BattleStatus
   phase: BattlePhase
+  maxPlayers: number
+  teamSize: number
+  caseIds: string[]
+  mode: string
+  fillBots: boolean
+  seed: string
   players: BattlePlayer[]
-  /** Precomputed fair rolls for the whole match (incl. sudden death if needed). */
   drops: RoundDrop[]
   currentRound: number
   totalRounds: number
   suddenDeath: boolean
   winnerId: string | null
-  createdAt: number
+  winnerTeamId: TeamId | null
+  entryFee: number
+  phaseStartedAt: number | null
   finishedAt: number | null
-  /** True after local entry fee charged. */
-  entryCharged: boolean
-  /** True after winner received pool items. */
   payoutDone: boolean
+  createdAt: number
+  updatedAt: number
+  phaseEndsInMs: number | null
 }
 
-export interface BattleHistoryEntry {
-  id: string
-  finishedAt: number
-  mode: BattleMode
-  caseIds: string[]
-  players: { id: string; name: string; kind: PlayerKind; total: number }[]
-  winnerId: string
-  winnerName: string
-  youWon: boolean
-  poolValue: number
-  entryFee: number
+export function formatLabel(room: {
+  teamSize?: number
+  maxPlayers: number
+}): string {
+  const teamSize = room.teamSize ?? 1
+  if (teamSize === 3) return '3v3'
+  if (teamSize === 2) return '2v2'
+  if (room.maxPlayers === 2) return '1v1'
+  if (room.maxPlayers === 3) return '1v1v1'
+  if (room.maxPlayers === 4) return '1v1v1v1'
+  return `${room.maxPlayers}p`
 }

@@ -1,277 +1,254 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { getCaseById } from '../../cases/data/cases'
+import { useAuthStore } from '../../auth/store/authStore'
 import { usePlayerStore } from '../../inventory/store/playerStore'
-import {
-  advanceAfterReveal,
-  canStart,
-  cloneForRematch,
-  createRoom,
-  entryFeeFor,
-  forfeitPlayer,
-  makeBot,
-  makeHotseat,
-  startRoom,
-} from '../services/battleRoom'
-import { sumPlayerTotals } from '../services/roundResolver'
-import {
-  BattleMode,
-  type BattleHistoryEntry,
-  type BattlePrivacy,
-  type BattleRoomState,
-  type BotLuck,
+import type {
+  BattlePrivacy,
+  BattleRoomState,
+  BotLuck,
+  BattleFormat,
 } from '../types'
+import {
+  addBotApi,
+  battleApiReason,
+  createBattleApi,
+  fetchBattle,
+  fetchBattleByInvite,
+  fetchBattleFeed,
+  forfeitBattleApi,
+  joinBattleApi,
+  leaveBattleApi,
+  readyBattleApi,
+  rematchBattleApi,
+  startBattleApi,
+} from '../services/battleApi'
+
+type OkId = { ok: true; id: string } | { ok: false; reason: string }
+type Ok = { ok: true } | { ok: false; reason: string }
 
 interface BattleStore {
   rooms: Record<string, BattleRoomState>
-  history: BattleHistoryEntry[]
+  lobbies: BattleRoomState[]
+  live: BattleRoomState[]
+  feedError: string | null
+  loadingFeed: boolean
+
+  upsertRoom: (room: BattleRoomState) => void
+  applyUserSync: (user?: { balance: number; inventory: unknown }) => void
+
+  refreshFeed: () => Promise<void>
+  refreshRoom: (id: string) => Promise<BattleRoomState | null>
   createBattle: (input: {
-    maxPlayers: 2 | 3 | 4
+    format: BattleFormat
     caseIds: string[]
     privacy: BattlePrivacy
     fillBots: boolean
-  }) => { ok: true; id: string } | { ok: false; reason: string }
-  addBot: (battleId: string, luck?: BotLuck) => void
-  addHotseat: (battleId: string) => void
-  toggleReady: (battleId: string, playerId: string) => void
-  startBattle: (battleId: string) => { ok: true } | { ok: false; reason: string }
-  markRoundRevealed: (battleId: string) => void
-  continueBattle: (battleId: string) => void
-  forfeit: (battleId: string, playerId?: string) => void
-  settlePayout: (battleId: string) => void
-  rematch: (battleId: string) => string | null
-  getPublicLobbies: () => BattleRoomState[]
-  getRoom: (id: string) => BattleRoomState | undefined
-  findByInvite: (code: string) => BattleRoomState | undefined
+  }) => Promise<OkId>
+  joinBattle: (id: string) => Promise<Ok>
+  leaveBattle: (id: string) => Promise<Ok>
+  toggleReady: (battleId: string) => Promise<Ok>
+  addBot: (battleId: string, luck?: BotLuck) => Promise<Ok>
+  startBattle: (battleId: string) => Promise<Ok>
+  forfeit: (battleId: string) => Promise<Ok>
+  rematch: (battleId: string) => Promise<string | null>
+  findByInvite: (code: string) => Promise<BattleRoomState | null>
 }
 
-function casePrice(id: string): number {
-  return getCaseById(id)?.price ?? 0
+function tokenOrNull(): string | null {
+  return useAuthStore.getState().token
 }
 
-function upsert(rooms: Record<string, BattleRoomState>, room: BattleRoomState) {
-  return { ...rooms, [room.id]: room }
-}
-
-function toHistory(room: BattleRoomState): BattleHistoryEntry {
-  const totals = sumPlayerTotals(room.drops, room.players)
-  const winner = room.players.find((p) => p.id === room.winnerId)
-  const poolValue = room.drops.reduce((s, d) => s + d.item.value, 0)
-  const entry = entryFeeFor(room.config.caseIds, casePrice)
-  return {
-    id: room.id,
-    finishedAt: room.finishedAt ?? Date.now(),
-    mode: room.config.mode,
-    caseIds: room.config.caseIds,
-    players: room.players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      kind: p.kind,
-      total: totals[p.id] ?? 0,
-    })),
-    winnerId: room.winnerId ?? '',
-    winnerName: winner?.name ?? '—',
-    youWon: room.winnerId === 'local-you',
-    poolValue,
-    entryFee: entry,
+function syncEconomyFromUser(user?: {
+  balance: number
+  inventory: unknown
+}): void {
+  if (!user) {
+    void useAuthStore.getState().refreshMe()
+    return
   }
+  const current = useAuthStore.getState().user
+  if (!current) {
+    void useAuthStore.getState().refreshMe()
+    return
+  }
+  useAuthStore.getState().patchUserLocal(current.id, {
+    balance: user.balance,
+    inventory: Array.isArray(user.inventory)
+      ? (user.inventory as never)
+      : current.inventory,
+  })
+  usePlayerStore.getState().syncFromAuth()
 }
 
-export const useBattleStore = create<BattleStore>()(
-  persist(
-    (set, get) => ({
-      rooms: {},
-      history: [],
+export const useBattleStore = create<BattleStore>((set, get) => ({
+  rooms: {},
+  lobbies: [],
+  live: [],
+  feedError: null,
+  loadingFeed: false,
 
-      createBattle: ({ maxPlayers, caseIds, privacy, fillBots }) => {
-        if (caseIds.length < 1 || caseIds.length > 8) {
-          return { ok: false, reason: 'Выбери от 1 до 8 кейсов' }
+  upsertRoom: (room) => {
+    set((s) => ({ rooms: { ...s.rooms, [room.id]: room } }))
+  },
+
+  applyUserSync: (user) => {
+    syncEconomyFromUser(user)
+  },
+
+  refreshFeed: async () => {
+    const token = tokenOrNull()
+    if (!token) return
+    set({ loadingFeed: true, feedError: null })
+    try {
+      const feed = await fetchBattleFeed(token)
+      set((s) => {
+        const rooms = { ...s.rooms }
+        for (const r of [...feed.lobbies, ...feed.live]) rooms[r.id] = r
+        return {
+          lobbies: feed.lobbies,
+          live: feed.live,
+          rooms,
+          loadingFeed: false,
         }
-        if (!caseIds.every((id) => getCaseById(id))) {
-          return { ok: false, reason: 'Неизвестный кейс' }
-        }
-        const fee = entryFeeFor(caseIds, casePrice)
-        if (usePlayerStore.getState().balance < fee) {
-          return { ok: false, reason: 'Недостаточно средств на вход' }
-        }
+      })
+    } catch (err) {
+      set({
+        loadingFeed: false,
+        feedError: battleApiReason(err, 'Не удалось загрузить лобби'),
+      })
+    }
+  },
 
-        const room = createRoom({
-          hostName: 'You',
-          config: {
-            maxPlayers,
-            caseIds,
-            privacy,
-            mode: BattleMode.Highest,
-          },
-          fillBots,
-        })
+  refreshRoom: async (id) => {
+    const token = tokenOrNull()
+    if (!token) return null
+    try {
+      const room = await fetchBattle(token, id)
+      get().upsertRoom(room)
+      return room
+    } catch {
+      return null
+    }
+  },
 
-        set((s) => ({ rooms: upsert(s.rooms, room) }))
-        return { ok: true, id: room.id }
-      },
+  createBattle: async (input) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const room = await createBattleApi(token, input)
+      get().upsertRoom(room)
+      void get().refreshFeed()
+      return { ok: true, id: room.id }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Не удалось создать') }
+    }
+  },
 
-      addBot: (battleId, luck) => {
+  joinBattle: async (id) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const { room } = await joinBattleApi(token, id)
+      get().upsertRoom(room)
+      void get().refreshFeed()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Не удалось войти') }
+    }
+  },
+
+  leaveBattle: async (id) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const result = await leaveBattleApi(token, id)
+      if (result.cancelled || !result.room) {
         set((s) => {
-          const room = s.rooms[battleId]
-          if (!room || room.status !== 'lobby') return s
-          if (room.players.length >= room.config.maxPlayers) return s
-          const bot = makeBot(room.players.length, luck)
-          return {
-            rooms: upsert(s.rooms, {
-              ...room,
-              players: [...room.players, bot],
-            }),
-          }
+          const { [id]: _, ...rest } = s.rooms
+          return { rooms: rest }
         })
-      },
+      } else {
+        get().upsertRoom(result.room)
+      }
+      void get().refreshFeed()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Не удалось выйти') }
+    }
+  },
 
-      addHotseat: (battleId) => {
-        set((s) => {
-          const room = s.rooms[battleId]
-          if (!room || room.status !== 'lobby') return s
-          if (room.players.length >= room.config.maxPlayers) return s
-          const seat = makeHotseat(room.players.filter((p) => p.kind === 'hotseat').length)
-          return {
-            rooms: upsert(s.rooms, {
-              ...room,
-              players: [...room.players, seat],
-            }),
-          }
-        })
-      },
+  toggleReady: async (battleId) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const room = await readyBattleApi(token, battleId)
+      get().upsertRoom(room)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Ошибка Ready') }
+    }
+  },
 
-      toggleReady: (battleId, playerId) => {
-        set((s) => {
-          const room = s.rooms[battleId]
-          if (!room || room.status !== 'lobby') return s
-          const players = room.players.map((p) => {
-            if (p.id !== playerId) return p
-            if (p.kind === 'bot') return p
-            return { ...p, ready: !p.ready }
-          })
-          return { rooms: upsert(s.rooms, { ...room, players }) }
-        })
-      },
+  addBot: async (battleId, luck) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const room = await addBotApi(token, battleId, luck)
+      get().upsertRoom(room)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Не удалось добавить бота') }
+    }
+  },
 
-      startBattle: (battleId) => {
-        const room = get().rooms[battleId]
-        if (!room) return { ok: false, reason: 'Лобби не найдено' }
-        if (room.hostId !== 'local-you') return { ok: false, reason: 'Только хост' }
-        if (!canStart(room)) return { ok: false, reason: 'Не все Ready' }
+  startBattle: async (battleId) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const { room, user } = await startBattleApi(token, battleId)
+      get().upsertRoom(room)
+      syncEconomyFromUser(user)
+      void get().refreshFeed()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Не удалось стартовать') }
+    }
+  },
 
-        const fee = entryFeeFor(room.config.caseIds, casePrice)
-        if (!room.entryCharged) {
-          const paid = usePlayerStore.getState().chargeEntry(fee)
-          if (!paid) return { ok: false, reason: 'Недостаточно средств' }
-        }
+  forfeit: async (battleId) => {
+    const token = tokenOrNull()
+    if (!token) return { ok: false, reason: 'Войди в аккаунт' }
+    try {
+      const { room, user } = await forfeitBattleApi(token, battleId)
+      get().upsertRoom(room)
+      syncEconomyFromUser(user)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: battleApiReason(err, 'Forfeit не удался') }
+    }
+  },
 
-        const started = {
-          ...startRoom(room),
-          entryCharged: true,
-        }
-        set((s) => ({ rooms: upsert(s.rooms, started) }))
-        return { ok: true }
-      },
+  rematch: async (battleId) => {
+    const token = tokenOrNull()
+    if (!token) return null
+    try {
+      const room = await rematchBattleApi(token, battleId)
+      get().upsertRoom(room)
+      void get().refreshFeed()
+      return room.id
+    } catch {
+      return null
+    }
+  },
 
-      markRoundRevealed: (battleId) => {
-        set((s) => {
-          const room = s.rooms[battleId]
-          if (!room || room.status !== 'running') return s
-          return {
-            rooms: upsert(s.rooms, { ...room, phase: 'revealed' }),
-          }
-        })
-      },
-
-      continueBattle: (battleId) => {
-        set((s) => {
-          const room = s.rooms[battleId]
-          if (!room) return s
-          const next = advanceAfterReveal(room)
-          let history = s.history
-          if (next.status === 'finished' && room.status !== 'finished') {
-            history = [toHistory(next), ...s.history].slice(0, 40)
-          }
-          return { rooms: upsert(s.rooms, next), history }
-        })
-        // payout after finish
-        const finished = get().rooms[battleId]
-        if (finished?.status === 'finished') {
-          get().settlePayout(battleId)
-        }
-      },
-
-      forfeit: (battleId, playerId = 'local-you') => {
-        set((s) => {
-          const room = s.rooms[battleId]
-          if (!room) return s
-          if (room.status === 'lobby') {
-            const { [battleId]: _, ...rest } = s.rooms
-            return { rooms: rest }
-          }
-          const next = forfeitPlayer(room, playerId)
-          let history = s.history
-          if (next.status === 'finished' && room.status !== 'finished') {
-            history = [toHistory(next), ...s.history].slice(0, 40)
-          }
-          return { rooms: upsert(s.rooms, next), history }
-        })
-        const finished = get().rooms[battleId]
-        if (finished?.status === 'finished') {
-          get().settlePayout(battleId)
-        }
-      },
-
-      settlePayout: (battleId) => {
-        const room = get().rooms[battleId]
-        if (!room || room.status !== 'finished' || room.payoutDone) return
-        if (room.winnerId === 'local-you') {
-          const pool = room.drops.map((d) => d.item)
-          usePlayerStore.getState().grantBattlePool(pool, room.id)
-        }
-        set((s) => ({
-          rooms: upsert(s.rooms, { ...room, payoutDone: true }),
-        }))
-      },
-
-      rematch: (battleId) => {
-        const room = get().rooms[battleId]
-        if (!room) return null
-        const next = cloneForRematch(room)
-        // Keep similar bot/hotseat composition
-        const extras = room.players.filter((p) => p.kind !== 'local')
-        let players = next.players
-        for (const extra of extras) {
-          if (players.length >= next.config.maxPlayers) break
-          if (extra.kind === 'bot') {
-            players = [...players, makeBot(players.length, extra.luck)]
-          } else if (extra.kind === 'hotseat') {
-            players = [...players, makeHotseat(players.filter((p) => p.kind === 'hotseat').length)]
-          }
-        }
-        const patched = { ...next, players }
-        set((s) => ({ rooms: upsert(s.rooms, patched) }))
-        return patched.id
-      },
-
-      getPublicLobbies: () =>
-        Object.values(get().rooms).filter(
-          (r) => r.status === 'lobby' && r.config.privacy === 'public',
-        ),
-
-      getRoom: (id) => get().rooms[id],
-
-      findByInvite: (code) =>
-        Object.values(get().rooms).find(
-          (r) => r.inviteCode.toUpperCase() === code.toUpperCase(),
-        ),
-    }),
-    {
-      name: 'a34-battles',
-      partialize: (state) => ({
-        rooms: state.rooms,
-        history: state.history,
-      }),
-    },
-  ),
-)
+  findByInvite: async (code) => {
+    const token = tokenOrNull()
+    if (!token) return null
+    try {
+      const room = await fetchBattleByInvite(token, code.trim())
+      get().upsertRoom(room)
+      return room
+    } catch {
+      return null
+    }
+  },
+}))

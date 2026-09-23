@@ -4,6 +4,7 @@ import { ensureAdminSeeded } from './auth.js'
 import { adminRouter } from './routes/admin.js'
 import { authRouter } from './routes/auth.js'
 import { meRouter } from './routes/me.js'
+import { battlesRouter } from './routes/battles.js'
 import { chatRouter } from './routes/chat.js'
 import { supportRouter } from './routes/support.js'
 import { paymentsRouter, topupsRouter } from './routes/topups.js'
@@ -33,6 +34,7 @@ app.use('/api/topups', topupsRouter)
 app.use('/api/payments', paymentsRouter)
 app.use('/api/support', supportRouter)
 app.use('/api/chat', chatRouter)
+app.use('/api/battles', battlesRouter)
 
 app.use(
   (

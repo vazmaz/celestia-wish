@@ -1,49 +1,76 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CASES, getCaseById } from '../../cases/data/cases'
 import { usePlayerStore } from '../../inventory/store/playerStore'
 import { entryFeeFor } from '../services/battleRoom'
 import { useBattleStore } from '../store/battleStore'
-import type { BattlePrivacy } from '../types'
+import type { BattleFormat, BattlePrivacy } from '../types'
+import { formatLabel } from '../types'
 
 export function BattlesPage() {
   const navigate = useNavigate()
   const balance = usePlayerStore((s) => s.balance)
-  const rooms = useBattleStore((s) => s.rooms)
-  const history = useBattleStore((s) => s.history)
+  const lobbies = useBattleStore((s) => s.lobbies)
+  const live = useBattleStore((s) => s.live)
+  const feedError = useBattleStore((s) => s.feedError)
+  const loadingFeed = useBattleStore((s) => s.loadingFeed)
+  const refreshFeed = useBattleStore((s) => s.refreshFeed)
   const createBattle = useBattleStore((s) => s.createBattle)
+  const joinBattle = useBattleStore((s) => s.joinBattle)
   const findByInvite = useBattleStore((s) => s.findByInvite)
 
-  const publicLobbies = useMemo(
-    () =>
-      Object.values(rooms).filter(
-        (r) => r.status === 'lobby' && r.config.privacy === 'public',
-      ),
-    [rooms],
-  )
-
-  const [maxPlayers, setMaxPlayers] = useState<2 | 3 | 4>(2)
+  const [format, setFormat] = useState<BattleFormat>('ffa2')
   const [selected, setSelected] = useState<string[]>([CASES[0].id])
   const [privacy, setPrivacy] = useState<BattlePrivacy>('public')
   const [fillBots, setFillBots] = useState(true)
   const [invite, setInvite] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const fee = entryFeeFor(selected, (id) => getCaseById(id)?.price ?? 0)
+  const fee = entryFeeFor(selected)
+  const counts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const id of selected) map.set(id, (map.get(id) ?? 0) + 1)
+    return map
+  }, [selected])
 
-  const toggleCase = (id: string) => {
+  useEffect(() => {
+    void refreshFeed()
+    const t = window.setInterval(() => void refreshFeed(), 3000)
+    return () => window.clearInterval(t)
+  }, [refreshFeed])
+
+  const addCase = (id: string) => {
+    setSelected((prev) => [...prev, id])
+  }
+
+  const removeOneCase = (id: string) => {
     setSelected((prev) => {
-      if (prev.includes(id)) {
-        return prev.length === 1 ? prev : prev.filter((x) => x !== id)
-      }
-      if (prev.length >= 8) return prev
-      return [...prev, id]
+      const idx = prev.lastIndexOf(id)
+      if (idx < 0) return prev
+      if (prev.length === 1) return prev
+      return [...prev.slice(0, idx), ...prev.slice(idx + 1)]
     })
   }
 
-  const handleCreate = () => {
-    const result = createBattle({ maxPlayers, caseIds: selected, privacy, fillBots })
+  const removeRoundAt = (index: number) => {
+    setSelected((prev) => {
+      if (prev.length <= 1) return prev
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  const handleCreate = async () => {
+    setBusy(true)
+    setError(null)
+    const result = await createBattle({
+      format,
+      caseIds: selected,
+      privacy,
+      fillBots,
+    })
+    setBusy(false)
     if (!result.ok) {
       setError(result.reason)
       return
@@ -51,14 +78,29 @@ export function BattlesPage() {
     navigate(`/battles/${result.id}`)
   }
 
-  const handleJoinCode = () => {
-    const room = findByInvite(invite.trim())
+  const handleJoinCode = async () => {
+    setBusy(true)
+    setError(null)
+    const room = await findByInvite(invite.trim())
+    setBusy(false)
     if (!room) {
       setError('Лобби с таким кодом не найдено')
       return
     }
+    if (room.status === 'lobby') {
+      const joined = await joinBattle(room.id)
+      if (!joined.ok) {
+        setError(joined.reason)
+        return
+      }
+    }
     navigate(`/battles/${room.id}`)
   }
+
+  const openSeats = useMemo(
+    () => lobbies.filter((r) => r.players.length < r.maxPlayers),
+    [lobbies],
+  )
 
   return (
     <div className="page battles-page">
@@ -66,16 +108,21 @@ export function BattlesPage() {
         <div>
           <h1>Case Battle</h1>
           <p>
-            Все открывают одинаковые баннеры. Highest — победитель забирает весь пул предметов
-            (фан-режим в духе Genshin).
+            Публичные лобби видны всем игрокам. Highest — победитель забирает весь
+            пул. Можно смотреть live-матчи.
           </p>
         </div>
         <button
           type="button"
           className="btn btn--primary"
+          disabled={busy}
           onClick={() => {
-            setShowCreate(true)
-            setError(null)
+            if (!showCreate) {
+              setShowCreate(true)
+              setError(null)
+              return
+            }
+            void handleCreate()
           }}
         >
           Создать баттл
@@ -89,24 +136,33 @@ export function BattlesPage() {
           value={invite}
           onChange={(e) => setInvite(e.target.value)}
         />
-        <button type="button" className="btn btn--ghost" onClick={handleJoinCode}>
-          Войти по ссылке
+        <button
+          type="button"
+          className="btn btn--ghost"
+          disabled={busy}
+          onClick={() => void handleJoinCode()}
+        >
+          Войти по коду
         </button>
       </div>
+      {feedError && <p className="form-error">{feedError}</p>}
+      {error && <p className="form-error">{error}</p>}
 
       {showCreate && (
         <section className="battle-create">
           <h2>Новый баттл</h2>
           <div className="battle-create__grid">
             <label>
-              Игроки
+              Формат
               <select
-                value={maxPlayers}
-                onChange={(e) => setMaxPlayers(Number(e.target.value) as 2 | 3 | 4)}
+                value={format}
+                onChange={(e) => setFormat(e.target.value as BattleFormat)}
               >
-                <option value={2}>1v1</option>
-                <option value={3}>1v1v1</option>
-                <option value={4}>1v1v1v1</option>
+                <option value="ffa2">1v1</option>
+                <option value="ffa3">1v1v1</option>
+                <option value="ffa4">1v1v1v1</option>
+                <option value="2v2">2v2 команды</option>
+                <option value="3v3">3v3 команды</option>
               </select>
             </label>
             <label>
@@ -125,68 +181,151 @@ export function BattlesPage() {
                 checked={fillBots}
                 onChange={(e) => setFillBots(e.target.checked)}
               />
-              Заполнить ботами
+              Добить ботами при старте
             </label>
           </div>
 
-          <p className="form-hint">Кейсы (1–8). Режим победы: Highest.</p>
+          <p className="form-hint">
+            Кейсы (от 1, без лимита раундов). Один кейс можно добавить несколько
+            раз. Режим: Highest.
+          </p>
           <div className="battle-case-picker">
             {CASES.map((c) => {
-              const on = selected.includes(c.id)
+              const count = counts.get(c.id) ?? 0
               return (
-                <button
+                <div
                   key={c.id}
-                  type="button"
-                  className={`battle-case-chip${on ? ' is-on' : ''}`}
-                  onClick={() => toggleCase(c.id)}
+                  className={`battle-case-chip${count > 0 ? ' is-on' : ''}`}
                 >
                   <img src={c.image} alt="" className="battle-case-chip__img" />
-                  <strong>{c.name}</strong>
-                  <span>{c.price} Мора</span>
-                </button>
+                  {count > 0 && (
+                    <em className="battle-case-chip__count">×{count}</em>
+                  )}
+                  <div className="battle-case-chip__body">
+                    <strong>{c.name}</strong>
+                    <span>{c.price} Мора</span>
+                  </div>
+                  <div className="battle-case-chip__actions">
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={count === 0 || selected.length <= 1}
+                      onClick={() => removeOneCase(c.id)}
+                      aria-label={`Убрать ${c.name}`}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => addCase(c.id)}
+                      aria-label={`Добавить ${c.name}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               )
             })}
+          </div>
+
+          <div className="battle-round-queue">
+            <p className="form-hint">Очередь раундов ({selected.length})</p>
+            <ol className="battle-round-queue__list">
+              {selected.map((id, index) => {
+                const c = getCaseById(id)
+                return (
+                  <li key={`${id}-${index}`}>
+                    <span className="battle-round-queue__n">R{index + 1}</span>
+                    {c?.image && (
+                      <img src={c.image} alt="" className="battle-round-queue__img" />
+                    )}
+                    <strong>{c?.name ?? id}</strong>
+                    <em>{c?.price ?? 0} Мора</em>
+                    <button
+                      type="button"
+                      className="btn btn--tiny"
+                      disabled={selected.length <= 1}
+                      onClick={() => removeRoundAt(index)}
+                      aria-label={`Убрать раунд ${index + 1}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
           </div>
 
           <div className="battle-create__footer">
             <div>
               <span className="form-hint">Вход (сумма кейсов)</span>
               <strong className="fee-value">{fee} Мора</strong>
-              <span className="form-hint">Баланс: {balance.toLocaleString('ru-RU')} Мора</span>
+              <span className="form-hint">
+                Баланс: {balance.toLocaleString('ru-RU')} Мора
+              </span>
             </div>
             <div className="battle-create__actions">
-              <button type="button" className="btn btn--ghost" onClick={() => setShowCreate(false)}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setShowCreate(false)}
+              >
                 Отмена
               </button>
-              <button type="button" className="btn btn--primary" onClick={handleCreate}>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy}
+                onClick={() => void handleCreate()}
+              >
                 Создать баттл
               </button>
             </div>
           </div>
-          {error && <p className="form-error">{error}</p>}
         </section>
       )}
 
       <section>
-        <h2 className="subhead">Публичные лобби</h2>
-        {publicLobbies.length === 0 ? (
-          <p className="form-hint">Пока пусто — создай баттл.</p>
+        <h2 className="subhead">
+          Публичные лобби
+          {loadingFeed ? ' · обновление…' : ''}
+        </h2>
+        {openSeats.length === 0 ? (
+          <p className="form-hint">Пока пусто — создай баттл или зайди по коду.</p>
         ) : (
           <div className="lobby-list">
-            {publicLobbies.map((room) => {
-              const feeRoom = entryFeeFor(room.config.caseIds, (id) => getCaseById(id)?.price ?? 0)
+            {openSeats.map((room) => {
+              const feeRoom = entryFeeFor(room.caseIds)
               return (
-                <Link key={room.id} to={`/battles/${room.id}`} className="lobby-card">
+                <button
+                  key={room.id}
+                  type="button"
+                  className="lobby-card"
+                  onClick={() => {
+                    void (async () => {
+                      const joined = await joinBattle(room.id)
+                      if (!joined.ok) {
+                        setError(joined.reason)
+                        return
+                      }
+                      navigate(`/battles/${room.id}`)
+                    })()
+                  }}
+                >
                   <div>
                     <strong>
-                      {room.players.length}/{room.config.maxPlayers} игроков
+                      {room.players.length}/{room.maxPlayers} игроков
                     </strong>
                     <p>
-                      {room.config.caseIds.length} кейс(ов) · {feeRoom} Мора · Highest
+                      {formatLabel(room)} · {room.caseIds.length} кейс(ов) ·{' '}
+                      {feeRoom} Мора · Highest
+                      {' · '}
+                      {room.players.map((p) => p.name).join(', ')}
                     </p>
                   </div>
                   <span className="lobby-card__code">{room.inviteCode}</span>
-                </Link>
+                </button>
               )
             })}
           </div>
@@ -194,28 +333,29 @@ export function BattlesPage() {
       </section>
 
       <section>
-        <h2 className="subhead">История баттлов</h2>
-        {history.length === 0 ? (
-          <p className="form-hint">После первого матча история появится здесь.</p>
+        <h2 className="subhead">Идут сейчас</h2>
+        {live.length === 0 ? (
+          <p className="form-hint">Нет активных публичных матчей.</p>
         ) : (
-          <div className="history-list">
-            {history.map((h) => (
-              <div key={h.id} className={`history-card${h.youWon ? ' history-card--win' : ''}`}>
+          <div className="lobby-list">
+            {live.map((room) => (
+              <Link
+                key={room.id}
+                to={`/battles/${room.id}`}
+                className="lobby-card lobby-card--live"
+              >
                 <div>
-                  <strong>{h.youWon ? 'Победа' : 'Поражение'} · {h.winnerName}</strong>
+                  <strong>
+                    Live · раунд {room.currentRound + 1}/{room.totalRounds}
+                  </strong>
                   <p>
-                    Пул {h.poolValue} Мора · вход {h.entryFee} Мора ·{' '}
-                    {new Date(h.finishedAt).toLocaleString('ru-RU')}
+                    {formatLabel(room)} ·{' '}
+                    {room.players.map((p) => p.name).join(' vs ')} ·{' '}
+                    {entryFeeFor(room.caseIds)} Мора
                   </p>
                 </div>
-                <div className="history-card__scores">
-                  {h.players.map((p) => (
-                    <span key={p.id}>
-                      {p.name}: {p.total}
-                    </span>
-                  ))}
-                </div>
-              </div>
+                <span className="lobby-card__code">Смотреть</span>
+              </Link>
             ))}
           </div>
         )}

@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { RARITY_META } from '../../../features/cases/data/rarities'
 import { sfx } from '../../../shared/lib/sfx'
 import type { CaseItem } from '../../../shared/types'
 
-const DEFAULT_ITEM_WIDTH = 132
+const DEFAULT_ITEM_WIDTH = 128
 const ITEM_GAP = 10
 const DEFAULT_SPIN_MS = 5200
+const STRIP_LENGTH = 48
+const WIN_INDEX = STRIP_LENGTH - 8
 
 interface Props {
   pool: CaseItem[]
@@ -55,14 +64,29 @@ function easeRoulette(x: number) {
   return sampleY(t)
 }
 
-function buildStrip(pool: CaseItem[], winner: CaseItem, length = 48): CaseItem[] {
+function buildStrip(pool: CaseItem[], winner: CaseItem): CaseItem[] {
   const strip: CaseItem[] = []
-  for (let i = 0; i < length; i++) {
+  for (let i = 0; i < STRIP_LENGTH; i++) {
     strip.push(pool[Math.floor(Math.random() * pool.length)])
   }
-  const winIndex = length - 8
-  strip[winIndex] = winner
+  strip[WIN_INDEX] = winner
   return strip
+}
+
+/** Center of item[winIndex] exactly under the viewport midline. */
+function measureCenterOffset(
+  track: HTMLDivElement,
+  viewport: HTMLElement,
+  winIndex: number,
+  fallbackStride: number,
+  itemWidth: number,
+): number {
+  const el = track.children[winIndex] as HTMLElement | undefined
+  if (el) {
+    const itemCenter = el.offsetLeft + el.offsetWidth / 2
+    return itemCenter - viewport.clientWidth / 2
+  }
+  return winIndex * fallbackStride + itemWidth / 2 - viewport.clientWidth / 2
 }
 
 export function Roulette({
@@ -76,120 +100,190 @@ export function Roulette({
   audible = true,
   spinVariant = 'case',
 }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const onDoneRef = useRef(onDone)
+  const poolRef = useRef(pool)
+  const winnerRef = useRef(winner)
+  const spinningRef = useRef(spinning)
   const [offset, setOffset] = useState(0)
   const [active, setActive] = useState(false)
-  const strip = useMemo(() => buildStrip(pool, winner), [pool, winner])
-  const winIndex = strip.length - 8
-  const stride = itemWidth + ITEM_GAP
+  const [strip, setStrip] = useState(() => buildStrip(pool, winner))
+  const gap = ITEM_GAP
+  const stride = itemWidth + gap
+
+  poolRef.current = pool
+  winnerRef.current = winner
+  spinningRef.current = spinning
+
+  useEffect(() => {
+    onDoneRef.current = onDone
+  }, [onDone])
+
+  const centerOnWinner = useCallback(() => {
+    const track = trackRef.current
+    const viewport = viewportRef.current
+    if (!track || !viewport || viewport.clientWidth < 8) return
+    const centered = measureCenterOffset(
+      track,
+      viewport,
+      WIN_INDEX,
+      stride,
+      itemWidth,
+    )
+    setActive(false)
+    setOffset(centered)
+  }, [stride, itemWidth])
+
+  // Idle / after spin: keep winner dead-center. Also re-run on resize
+  // (opponent lanes often measure wrong on first paint).
+  useLayoutEffect(() => {
+    if (spinning) return
+    centerOnWinner()
+  }, [spinning, strip, centerOnWinner])
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      if (!spinningRef.current) centerOnWinner()
+    })
+    ro.observe(root)
+    return () => ro.disconnect()
+  }, [centerOnWinner])
 
   useEffect(() => {
     if (!spinning) return
 
-    const viewport = trackRef.current?.parentElement
-    const viewportWidth = viewport?.clientWidth ?? 360
-    const centerPad = viewportWidth / 2 - itemWidth / 2
-    const jitter = (Math.random() - 0.5) * (itemWidth * 0.35)
-    const target = winIndex * stride - centerPad + jitter
-
+    const frozen = buildStrip(poolRef.current, winnerRef.current)
+    setStrip(frozen)
     setActive(false)
-    setOffset(0)
 
     let cancelled = false
     let rafOuter = 0
     let rafInner = 0
+    let rafStart = 0
     let tickRaf = 0
-
-    const beginTicks = () => {
-      if (!audible || cancelled) return
-      sfx.spinStart(spinVariant)
-      const startCenter = viewportWidth / 2
-      const endCenter = target + viewportWidth / 2
-      const indexAt = (center: number) => Math.round((center - itemWidth / 2) / stride)
-      let lastIndex = indexAt(startCenter)
-      let landed = false
-      const startedAt = performance.now()
-
-      const step = (now: number) => {
-        if (cancelled) return
-        const t = Math.min(1, (now - startedAt) / durationMs)
-        const center = startCenter + (endCenter - startCenter) * easeRoulette(t)
-        const idx = indexAt(center)
-        if (idx !== lastIndex) {
-          sfx.tick(t)
-          lastIndex = idx
-        }
-        if (t < 1) {
-          tickRaf = requestAnimationFrame(step)
-        } else if (!landed) {
-          landed = true
-          sfx.land()
-        }
-      }
-      tickRaf = requestAnimationFrame(step)
-    }
+    let timer = 0
 
     rafOuter = requestAnimationFrame(() => {
       rafInner = requestAnimationFrame(() => {
         if (cancelled) return
-        setActive(true)
-        setOffset(target)
-        beginTicks()
+        const track = trackRef.current
+        const viewport = viewportRef.current
+        if (!track || !viewport) return
+
+        const target = measureCenterOffset(
+          track,
+          viewport,
+          WIN_INDEX,
+          stride,
+          itemWidth,
+        )
+        const startOffset = Math.max(0, target - stride * 18)
+        setOffset(startOffset)
+
+        const beginTicks = () => {
+          if (!audible || cancelled) return
+          sfx.spinStart(spinVariant)
+          const travel = target - startOffset
+          const startedAt = performance.now()
+          let lastIndex = -1
+          let landed = false
+
+          const step = (now: number) => {
+            if (cancelled) return
+            const t = Math.min(1, (now - startedAt) / durationMs)
+            const current = startOffset + travel * easeRoulette(t)
+            const idx = Math.round(current / stride)
+            if (idx !== lastIndex) {
+              sfx.tick(t)
+              lastIndex = idx
+            }
+            if (t < 1) {
+              tickRaf = requestAnimationFrame(step)
+            } else if (!landed) {
+              landed = true
+              sfx.land()
+            }
+          }
+          tickRaf = requestAnimationFrame(step)
+        }
+
+        rafStart = requestAnimationFrame(() => {
+          if (cancelled) return
+          setActive(true)
+          setOffset(target)
+          beginTicks()
+        })
+
+        timer = window.setTimeout(() => {
+          onDoneRef.current()
+        }, durationMs + 80)
       })
     })
-
-    const timer = window.setTimeout(() => {
-      onDone()
-    }, durationMs + 80)
 
     return () => {
       cancelled = true
       cancelAnimationFrame(rafOuter)
       cancelAnimationFrame(rafInner)
+      cancelAnimationFrame(rafStart)
       cancelAnimationFrame(tickRaf)
       window.clearTimeout(timer)
     }
-  }, [spinning, winIndex, onDone, durationMs, itemWidth, stride, audible, spinVariant])
+  }, [spinning, durationMs, itemWidth, stride, audible, spinVariant])
 
   return (
-    <div className={`roulette${compact ? ' roulette--compact' : ''}`} aria-live="polite">
+    <div
+      ref={rootRef}
+      className={`roulette${compact ? ' roulette--compact' : ''}`}
+      aria-live="polite"
+    >
+      {/* Marker outside masked clip so it's always visible & centered */}
       <div className="roulette__marker" aria-hidden />
-      <div className="roulette__viewport">
-        <div
-          ref={trackRef}
-          className={`roulette__track${active ? ' roulette__track--spin' : ''}`}
-          style={{
-            transform: `translate3d(${-offset}px, 0, 0)`,
-            transitionDuration: active ? `${durationMs}ms` : '0ms',
-          }}
-        >
-          {strip.map((item, index) => {
-            const meta = RARITY_META[item.rarity]
-            return (
-              <div
-                key={`${item.id}-${index}`}
-                className="roulette__item"
-                style={
-                  {
-                    width: itemWidth,
-                    '--item-color': meta.color,
-                    '--item-glow': meta.glow,
-                    '--item-accent': item.accent,
-                  } as CSSProperties
-                }
-              >
-                <div className="roulette__item-visual">
-                  {item.image ? (
-                    <img src={item.image} alt="" />
-                  ) : (
-                    <span>{item.name.slice(0, 1)}</span>
-                  )}
+      <div className="roulette__viewport" ref={viewportRef}>
+        <div className="roulette__clip">
+          <div
+            ref={trackRef}
+            className={`roulette__track${active ? ' roulette__track--spin' : ''}`}
+            style={{
+              transform: `translate3d(${-offset}px, 0, 0)`,
+              transitionDuration: active ? `${durationMs}ms` : '0ms',
+              gap: `${gap}px`,
+            }}
+          >
+            {strip.map((item, index) => {
+              const meta = RARITY_META[item.rarity]
+              const isWin = index === WIN_INDEX && !spinning
+              return (
+                <div
+                  key={`${item.id}-${index}`}
+                  className={`roulette__item${isWin ? ' roulette__item--win' : ''}`}
+                  style={
+                    {
+                      width: itemWidth,
+                      flex: `0 0 ${itemWidth}px`,
+                      '--item-width': `${itemWidth}px`,
+                      '--item-color': meta.color,
+                      '--item-glow': meta.glow,
+                      '--item-accent': item.accent,
+                    } as CSSProperties
+                  }
+                >
+                  <div className="roulette__item-visual">
+                    {item.image ? (
+                      <img src={item.image} alt="" />
+                    ) : (
+                      <span>{item.name.slice(0, 1)}</span>
+                    )}
+                  </div>
+                  <p className="roulette__item-name">{item.name}</p>
+                  <span className="roulette__item-rarity">{meta.label}</span>
                 </div>
-                <p className="roulette__item-name">{item.name}</p>
-                <span className="roulette__item-rarity">{meta.label}</span>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
